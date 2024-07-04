@@ -1,0 +1,10 @@
+{
+  "extends": "@relaycorp/shared-config/tsconfig-esm.json",
+  "compilerOptions": {
+    "outDir": "build/main",
+    "rootDir": "src",
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types", "src/types"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.cjs"]
+}
