@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -o nounset
+set -o errexit
+set -o pipefail
+
+ROOT_DIR="$(realpath "$(dirname "$0")/..")"
+
+TS_NODE_PATH="$ROOT_DIR/node_modules/.bin/ts-node"
+exec "${TS_NODE_PATH}" \
+    --esm \
+    --files \
+    --experimental-specifier-resolution=node \
+    src/server.ts

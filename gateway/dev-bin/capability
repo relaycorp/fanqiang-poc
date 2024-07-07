@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -o nounset
+set -o errexit
+set -o pipefail
+
+PARENT_DIR="$(dirname "$(realpath "$0")")"
+RUN_SCRIPT="$PARENT_DIR/run"
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <add|remove>"
+    exit 1
+fi
+
+# Determine action based on argument
+case "$1" in
+    add)
+        sudo setcap cap_net_raw+ep "$RUN_SCRIPT"
+        echo "Capability 'cap_net_raw' added to $RUN_SCRIPT"
+        ;;
+    remove)
+        sudo setcap cap_net_raw-ep "$RUN_SCRIPT"
+        echo "Capability 'cap_net_raw' removed from $RUN_SCRIPT"
+        ;;
+    *)
+        echo "Invalid argument: $1. Use 'add' or 'remove'."
+        exit 1
+        ;;
+esac
