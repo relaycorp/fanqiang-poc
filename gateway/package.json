@@ -8,6 +8,7 @@
     "clean": "del-cli build test coverage"
   },
   "dependencies": {
+    "raw-socket": "^1.8.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
