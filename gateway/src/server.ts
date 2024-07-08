@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import rawSocket, { AddressFamily, Protocol, SocketOptions } from 'raw-socket';
+import { AddressFamily, Protocol, SocketOptions, createSocket } from 'raw-socket';
 
 const server = new WebSocketServer({ host: '127.0.0.1', port: 8080 });
 
@@ -7,13 +7,14 @@ const server = new WebSocketServer({ host: '127.0.0.1', port: 8080 });
 const rawSocketOptions: SocketOptions = {
   addressFamily: AddressFamily.IPv4,
   protocol: Protocol.ICMP,
+  generateChecksums: true,
 };
 
 server.on('connection', (wsClient: WebSocket) => {
   console.log('Client connected');
 
   // TODO: Should we create a pool of raw sockets and reuse them across client connections?
-  const socket = rawSocket.createSocket(rawSocketOptions);
+  const rawSocket = createSocket(rawSocketOptions);
 
   wsClient.on('message', (data: Buffer) => {
     console.log(`Received ${data.length} bytes from WS client`);
@@ -21,7 +22,7 @@ server.on('connection', (wsClient: WebSocket) => {
     // TODO: Check that it's indeed an IPv4 address and switch to IPv6 if needed
     const destinationAddress = data.subarray(0, 4).join('.');
 
-    socket.send(data, 0, data.length, destinationAddress, (err, bytes) => {
+    rawSocket.send(data, 4, data.length - 4, destinationAddress, (err, bytes) => {
       if (err) {
         console.error(`Error sending data to ${destinationAddress}:`, err);
       } else {
@@ -30,29 +31,29 @@ server.on('connection', (wsClient: WebSocket) => {
     });
   });
 
-  socket.on('message', (buffer: Buffer, sourceAddress: string) => {
+  rawSocket.on('message', (buffer: Buffer, sourceAddress: string) => {
     console.log(`Received ${buffer.length} bytes from ${sourceAddress}`);
     wsClient.send(buffer);
   });
 
   wsClient.on('error', (err) => {
     console.error('Client error:', err);
-    socket.close();
+    rawSocket.close();
   });
 
   wsClient.on('close', () => {
     console.log('Client disconnected');
-    socket.close();
+    rawSocket.close();
   });
 
-  socket.on('error', (err) => {
+  rawSocket.on('error', (err) => {
     console.error('Raw socket error:', err);
 
     // TODO: Close with an error code
     wsClient.close();
   });
 
-  socket.on('close', () => {
+  rawSocket.on('close', () => {
     console.log('Raw socket closed');
   });
 });

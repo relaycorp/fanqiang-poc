@@ -11,6 +11,7 @@ const ICMP_PACKET = Buffer.from([
   0x73, 0x74, 0x75, 0x76, 0x77, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68,
   0x69,
 ]);
+raw.writeChecksum(ICMP_PACKET, 2, raw.createChecksum(ICMP_PACKET));
 
 const ws = new WebSocket(GATEWAY_URL);
 
@@ -23,12 +24,6 @@ ws.on('open', () => {
   pingInterval = setInterval(() => {
     const ipBuffer = Buffer.from(TARGET_ADDRESS.split('.').map(Number));
     const finalBuffer = Buffer.concat([ipBuffer, ICMP_PACKET]);
-
-    raw.writeChecksum(
-      finalBuffer,
-      6,
-      raw.createChecksum(finalBuffer.subarray(6)),
-    );
 
     ws.send(finalBuffer);
     console.log(`Sent ping to ${TARGET_ADDRESS}`);
