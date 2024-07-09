@@ -24,7 +24,9 @@ export class TunInterface {
     const tunAllocResult = tunAlloc(name, interfaceFile.fd);
     if (tunAllocResult !== 0) {
       await interfaceFile.close();
-      throw new Error(`Failed to allocate TUN device (code: ${tunAllocResult})`);
+      throw new Error(
+        `Failed to allocate TUN device (code: ${tunAllocResult})`,
+      );
     }
 
     return new TunInterface(interfaceFile);
@@ -34,44 +36,52 @@ export class TunInterface {
     await this.file.close();
   }
 
-  private async readNextPacket(
-    signal: AbortSignal,
+  private async readNextPacketOrAbort(
     buffer: Buffer,
+    signal: AbortSignal,
   ): Promise<Buffer | null> {
-    return Promise.race([
-      new Promise<null>((resolve) => {
-        const abort = () => {
-          resolve(null);
-        };
-        // TODO: Remove the listener when the OTHER promise is resolved
-        signal.addEventListener('abort', abort, { once: true });
-      }),
+    let removeAbortHandler: () => void;
 
-      new Promise<Buffer>(async (resolve, reject) => {
-        try {
-          const { bytesRead } = await this.file.read(
-            buffer,
-            0,
-            buffer.length,
-            null,
-          );
+    const abortPromise = new Promise<null>((resolve) => {
+      const abort = () => {
+        resolve(null);
+      };
+      signal.addEventListener('abort', abort, { once: true });
+      removeAbortHandler = () => signal.removeEventListener('abort', abort);
+    });
 
-          // Return a copy of the packet instead of a reference within `buffer`,
-          // as the buffer will be reused for subsequent packets.
-          const packet = Buffer.allocUnsafe(bytesRead);
-          buffer.copy(packet, 0, 0, bytesRead);
-          resolve(packet);
-        } catch (error) {
-          reject(new Error('Failed to read packet', { cause: error }));
-        }
-      }),
-    ]);
+    const packetPromise = this.readNextPacket(buffer);
+
+    return Promise.race([abortPromise, packetPromise]).finally(() =>
+      removeAbortHandler(),
+    );
+  }
+
+  private readNextPacket(buffer: Buffer) {
+    return new Promise<Buffer>(async (resolve, reject) => {
+      try {
+        const { bytesRead } = await this.file.read(
+          buffer,
+          0,
+          buffer.length,
+          null,
+        );
+
+        // Return a copy of the packet instead of a reference within `buffer`,
+        // as the buffer will be reused for subsequent packets.
+        const packet = Buffer.allocUnsafe(bytesRead);
+        buffer.copy(packet, 0, 0, bytesRead);
+        resolve(packet);
+      } catch (error) {
+        reject(new Error('Failed to read packet', { cause: error }));
+      }
+    });
   }
 
   public async *streamPackets(signal: AbortSignal): AsyncIterable<Buffer> {
     const buffer = Buffer.allocUnsafe(INTERFACE_MTU);
     while (!signal.aborted) {
-      const packet = await this.readNextPacket(signal, buffer);
+      const packet = await this.readNextPacketOrAbort(buffer, signal);
       if (packet === null) {
         break;
       }
