@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -o nounset
+set -o errexit
+set -o pipefail
+
+TUN_DEVICE_NAME="tun0"
+TUN_SUBNET="10.0.0.1/24"
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <up|down>"
+    exit 1
+fi
+
+# Determine action based on argument
+case "$1" in
+    up)
+        sudo ip tuntap add \
+            dev "${TUN_DEVICE_NAME}" \
+            mode tun \
+            user "${USER}"
+        sudo ip addr add "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
+        sudo ip link set up dev "${TUN_DEVICE_NAME}"
+        echo "Created device ${TUN_DEVICE_NAME}"
+        ;;
+    down)
+        sudo ip link set down dev "${TUN_DEVICE_NAME}"
+        sudo ip addr del "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
+        sudo ip tuntap del \
+            dev "${TUN_DEVICE_NAME}" \
+            mode tun
+        echo "Deleted device ${TUN_DEVICE_NAME}"
+        ;;
+    *)
+        exit 1
+        ;;
+esac
