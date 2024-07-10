@@ -10,6 +10,7 @@
     "clean": "del-cli build"
   },
   "dependencies": {
+    "streaming-iterables": "^8.0.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {

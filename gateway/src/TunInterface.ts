@@ -1,4 +1,5 @@
 import { open, FileHandle } from 'node:fs/promises';
+import { writeToStream } from 'streaming-iterables';
 
 import { tunAlloc } from './tun-wrapper.cjs';
 
@@ -50,11 +51,11 @@ export class TunInterface {
       removeAbortHandler = () => signal.removeEventListener('abort', abort);
     });
 
-    const packetPromise = this.readNextPacket(buffer);
-
-    return Promise.race([abortPromise, packetPromise]).finally(() =>
+    const packetPromise = this.readNextPacket(buffer).finally(() =>
       removeAbortHandler(),
     );
+
+    return Promise.race([abortPromise, packetPromise]);
   }
 
   private readNextPacket(buffer: Buffer) {
@@ -82,10 +83,20 @@ export class TunInterface {
     const buffer = Buffer.allocUnsafe(INTERFACE_MTU);
     while (!signal.aborted) {
       const packet = await this.readNextPacketOrAbort(buffer, signal);
+      console.log('Received packet!!!', packet?.byteLength);
       if (packet === null) {
         break;
       }
       yield packet;
     }
+  }
+
+  public createWriter(): (packets: AsyncIterable<Buffer>) => Promise<void> {
+    const stream = this.file.createWriteStream({
+      autoClose: false,
+      emitClose: false,
+      highWaterMark: INTERFACE_MTU,
+    });
+    return writeToStream(stream);
   }
 }
