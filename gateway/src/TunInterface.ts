@@ -3,7 +3,7 @@ import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 import { tunAlloc } from './tun-wrapper.cjs';
 import { IpPacket } from './packets/IpPacket.js';
-import { Ipv4Packet } from './packets/Ipv4Packet.js';
+import { initPacket } from './packets/init.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
@@ -52,13 +52,14 @@ export class TunInterface {
     await this.file.close();
   }
 
-  public async *streamPackets(): AsyncIterable<IpPacket> {
+  public async *createReader(): AsyncIterable<IpPacket> {
     const stream = this.file.createReadStream({
       autoClose: false,
       highWaterMark: INTERFACE_MTU,
     });
     try {
-      yield* pipeline(() => stream, map(Ipv4Packet.init));
+      // TODO: Handle malformed/invalid packets. Not that it should happen with TUN devices.
+      yield* pipeline(() => stream, map(initPacket));
     } catch (error: any) {
       if (error.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
         throw error;

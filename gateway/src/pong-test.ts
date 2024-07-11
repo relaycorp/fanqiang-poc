@@ -5,6 +5,15 @@ import { IpPacket } from './packets/IpPacket.js';
 import { calculateChecksum } from './utils/ip.js';
 import { Ipv4Packet } from './packets/Ipv4Packet.js';
 
+function convertIcmpRequestToResponse(icmpMessage: Buffer) {
+  icmpMessage[0] = 0; // Change type to Echo Reply (0)
+
+  // Recalculate ICMP checksum
+  icmpMessage.writeUInt16BE(0, 2);
+  const icmpChecksum = calculateChecksum(icmpMessage);
+  icmpMessage.writeUInt16BE(icmpChecksum, 2);
+}
+
 function convertToICMPReply(packet: IpPacket): IpPacket {
   const buffer = packet.buffer;
 
@@ -16,24 +25,13 @@ function convertToICMPReply(packet: IpPacket): IpPacket {
   const destIP = buffer.readUInt32BE(16);
   buffer.writeUInt32BE(destIP, 12);
   buffer.writeUInt32BE(sourceIP, 16);
-
-  // Reset IP header checksum
-  buffer.writeUInt16BE(0, 10);
-
-  // ICMP modifications
-  const icmpStart = (buffer[0] & 0x0f) * 4; // ICMP starts after IP header
-  buffer[icmpStart] = 0; // Change type to Echo Reply (0)
-
-  // Reset ICMP checksum
-  buffer.writeUInt16BE(0, icmpStart + 2);
-
   if (packet instanceof Ipv4Packet) {
     packet.recalculateChecksum();
   }
 
-  // Recalculate ICMP checksum
-  const icmpChecksum = calculateChecksum(buffer.subarray(icmpStart));
-  buffer.writeUInt16BE(icmpChecksum, icmpStart + 2);
+  // ICMP modifications
+  const icmpMessage = packet.getPayload();
+  convertIcmpRequestToResponse(icmpMessage);
 
   // TODO: Truncate the buffer too if we truncated the IP header options above.
   return packet;
@@ -50,7 +48,7 @@ function convertToICMPReply(packet: IpPacket): IpPacket {
   });
 
   await pipeline(
-    () => tunInterface.streamPackets(),
+    () => tunInterface.createReader(),
     map((packet) => {
       console.log('I:', packet.buffer.toString('hex'));
       return packet;

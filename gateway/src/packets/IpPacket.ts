@@ -1,3 +1,5 @@
 export abstract class IpPacket {
-  protected constructor(public buffer: Buffer) {}
+  constructor(public buffer: Buffer) {}
+
+  abstract getPayload(): Buffer;
 }
