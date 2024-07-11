@@ -3,7 +3,8 @@ import { map, pipeline } from 'streaming-iterables';
 import { TunInterface } from './TunInterface.js';
 import { IpPacket } from './packets/IpPacket.js';
 import { calculateChecksum } from './utils/ip.js';
-import { Ipv4Packet } from './packets/Ipv4Packet.js';
+import { Ipv4Packet } from './packets/ipv4/Ipv4Packet.js';
+import { IpAddress } from './packets/IpAddress.js';
 
 function convertIcmpRequestToResponse(icmpMessage: Buffer) {
   icmpMessage[0] = 0; // Change type to Echo Reply (0)
@@ -14,7 +15,9 @@ function convertIcmpRequestToResponse(icmpMessage: Buffer) {
   icmpMessage.writeUInt16BE(icmpChecksum, 2);
 }
 
-function convertToICMPReply(packet: IpPacket): IpPacket {
+function convertToICMPReply<Address extends IpAddress>(
+  packet: IpPacket<Address>,
+): IpPacket<Address> {
   const buffer = packet.buffer;
 
   // IPv4 header modifications (truncate options)
@@ -50,12 +53,16 @@ function convertToICMPReply(packet: IpPacket): IpPacket {
   await pipeline(
     () => tunInterface.createReader(),
     map((packet) => {
-      console.log('I:', packet.buffer.toString('hex'));
+      console.log(
+        `I: ${packet.getSourceAddress()} -> ${packet.getDestinationAddress()}`,
+      );
       return packet;
     }),
     map(convertToICMPReply),
     map((packet) => {
-      console.log('O:', packet.buffer.toString('hex'));
+      console.log(
+        `O: ${packet.getSourceAddress()} -> ${packet.getDestinationAddress()}`,
+      );
       return packet;
     }),
     tunInterface.createWriter(),

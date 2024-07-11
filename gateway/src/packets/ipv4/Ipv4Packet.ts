@@ -1,6 +1,7 @@
-import { InvalidPacketError } from './InvalidPacketError.js';
-import { IpPacket } from './IpPacket.js';
-import { calculateChecksum } from '../utils/ip.js';
+import { InvalidPacketError } from '../InvalidPacketError.js';
+import { IpPacket } from '../IpPacket.js';
+import { calculateChecksum } from '../../utils/ip.js';
+import { Ipv4Address } from './Ipv4Address.js';
 
 const MIN_IPV4_PACKET_LENGTH = 20;
 const MIN_IHL = 5;
@@ -9,6 +10,8 @@ enum HeaderFieldIndex {
   IHL = 0,
   TOTAL_LENGTH = 2,
   CHECKSUM = 10,
+  SOURCE_ADDRESS = 12,
+  DESTINATION_ADDRESS = 16,
 }
 
 function getIhl(packet: Buffer) {
@@ -20,7 +23,7 @@ function getIhl(packet: Buffer) {
  *
  * These instances are mutable, so avoid passing them around.
  */
-export class Ipv4Packet extends IpPacket {
+export class Ipv4Packet extends IpPacket<Ipv4Address> {
   constructor(buffer: Buffer) {
     super(buffer);
 
@@ -59,5 +62,21 @@ export class Ipv4Packet extends IpPacket {
   public override getPayload(): Buffer {
     const payloadOffset = this.getHeaderLength();
     return this.buffer.subarray(payloadOffset);
+  }
+
+  override getSourceAddress(): Ipv4Address {
+    const addressBuffer = this.buffer.subarray(
+      HeaderFieldIndex.SOURCE_ADDRESS,
+      HeaderFieldIndex.SOURCE_ADDRESS + 4,
+    );
+    return new Ipv4Address(addressBuffer);
+  }
+
+  override getDestinationAddress(): Ipv4Address {
+    const addressBuffer = this.buffer.subarray(
+      HeaderFieldIndex.DESTINATION_ADDRESS,
+      HeaderFieldIndex.DESTINATION_ADDRESS + 4,
+    );
+    return new Ipv4Address(addressBuffer);
   }
 }
