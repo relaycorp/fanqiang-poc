@@ -1,6 +1,6 @@
-import { IpAddress } from '../IpAddress.js';
+import { BaseIpAddress } from '../BaseIpAddress.js';
 
-export class Ipv4Address extends IpAddress {
+export class Ipv4Address extends BaseIpAddress<Ipv4Address> {
   public static readonly LENGTH = 4;
 
   constructor(buffer: Buffer) {
@@ -13,5 +13,10 @@ export class Ipv4Address extends IpAddress {
 
   public toString(): string {
     return this.buffer.join('.');
+  }
+
+  override clone() {
+    const newBuffer = this.cloneBuffer();
+    return new Ipv4Address(newBuffer);
   }
 }

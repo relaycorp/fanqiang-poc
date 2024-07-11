@@ -1,6 +1,6 @@
-import { IpAddress } from '../IpAddress.js';
+import { BaseIpAddress } from '../BaseIpAddress.js';
 
-export class Ipv6Address extends IpAddress {
+export class Ipv6Address extends BaseIpAddress<Ipv6Address> {
   public static readonly LENGTH = 16; // IPv6 addresses are 128 bits (16 bytes)
 
   constructor(buffer: Buffer) {
@@ -19,5 +19,10 @@ export class Ipv6Address extends IpAddress {
       hextets.push(hextet.toString(16));
     }
     return hextets.join(':');
+  }
+
+  public override clone() {
+    const newBuffer = this.cloneBuffer();
+    return new Ipv6Address(newBuffer);
   }
 }

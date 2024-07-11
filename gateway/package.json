@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "addons:rebuild": "node-gyp rebuild",
     "start": "tsx src/pong-test.ts",
-    "clean": "del-cli build"
+    "clean": "del-cli build",
+    "fix": "prettier --write ."
   },
   "dependencies": {
     "streaming-iterables": "^8.0.1",

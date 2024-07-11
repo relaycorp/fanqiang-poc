@@ -72,11 +72,23 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
     return new Ipv4Address(addressBuffer);
   }
 
+  override replaceSourceAddress(newIpAddress: Ipv4Address): void {
+    newIpAddress.buffer.copy(this.buffer, HeaderFieldIndex.SOURCE_ADDRESS, 0);
+  }
+
   override getDestinationAddress(): Ipv4Address {
     const addressBuffer = this.buffer.subarray(
       HeaderFieldIndex.DESTINATION_ADDRESS,
       HeaderFieldIndex.DESTINATION_ADDRESS + 4,
     );
     return new Ipv4Address(addressBuffer);
+  }
+
+  override replaceDestinationAddress(newIpAddress: Ipv4Address): void {
+    newIpAddress.buffer.copy(
+      this.buffer,
+      HeaderFieldIndex.DESTINATION_ADDRESS,
+      0,
+    );
   }
 }
