@@ -4,6 +4,8 @@ import { writeToStream } from 'streaming-iterables';
 import { tunAlloc } from './tun-wrapper.cjs';
 
 const INTERFACE_PATH = '/dev/net/tun';
+
+// TODO: Consider whether we should retrieve this value from the interface
 const INTERFACE_MTU = 1500;
 
 export class TunInterface {
@@ -16,7 +18,7 @@ export class TunInterface {
   public static async open(name: string = 'tun0'): Promise<TunInterface> {
     let interfaceFile: FileHandle;
     try {
-      // POC: Use O_NONBLOCK to avoid blocking. This requires handling EAGAIN/EWOULDBLOCK errors,
+      // TODO: Use O_NONBLOCK to avoid blocking. This requires handling EAGAIN/EWOULDBLOCK errors.
       interfaceFile = await open(INTERFACE_PATH, 'r+');
     } catch (error) {
       throw new Error('Failed to open TUN device', { cause: error });
@@ -34,67 +36,37 @@ export class TunInterface {
   }
 
   public async close(): Promise<void> {
+    /*
+    TODO: Fix this so it won't hang when there's an outstanding read() but no new packets
+
+    If there's an active read(), the file will be closed successfully upon receiving a new
+    packet (which won't be processed).
+
+    This happens regardless of whether createWriteStream() or read() directly is used. I think
+    this is because there's no way to cancel the read() operation.
+
+    I think this is the kind of issues that O_NONBLOCK may fix.
+     */
     await this.file.close();
   }
 
-  private async readNextPacketOrAbort(
-    buffer: Buffer,
-    signal: AbortSignal,
-  ): Promise<Buffer | null> {
-    let removeAbortHandler: () => void;
-
-    const abortPromise = new Promise<null>((resolve) => {
-      const abort = () => {
-        resolve(null);
-      };
-      signal.addEventListener('abort', abort, { once: true });
-      removeAbortHandler = () => signal.removeEventListener('abort', abort);
+  public async *streamPackets(): AsyncIterable<Buffer> {
+    const stream = this.file.createReadStream({
+      autoClose: false,
+      highWaterMark: INTERFACE_MTU,
     });
-
-    const packetPromise = this.readNextPacket(buffer).finally(() =>
-      removeAbortHandler(),
-    );
-
-    return Promise.race([abortPromise, packetPromise]);
-  }
-
-  private readNextPacket(buffer: Buffer) {
-    return new Promise<Buffer>(async (resolve, reject) => {
-      try {
-        const { bytesRead } = await this.file.read(
-          buffer,
-          0,
-          buffer.length,
-          null,
-        );
-
-        // Return a copy of the packet instead of a reference within `buffer`,
-        // as the buffer will be reused for subsequent packets.
-        const packet = Buffer.allocUnsafe(bytesRead);
-        buffer.copy(packet, 0, 0, bytesRead);
-        resolve(packet);
-      } catch (error) {
-        reject(new Error('Failed to read packet', { cause: error }));
+    try {
+      yield* stream;
+    } catch (error: any) {
+      if (error.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+        throw error;
       }
-    });
-  }
-
-  public async *streamPackets(signal: AbortSignal): AsyncIterable<Buffer> {
-    const buffer = Buffer.allocUnsafe(INTERFACE_MTU);
-    while (!signal.aborted) {
-      const packet = await this.readNextPacketOrAbort(buffer, signal);
-      console.log('Received packet!!!', packet?.byteLength);
-      if (packet === null) {
-        break;
-      }
-      yield packet;
     }
   }
 
   public createWriter(): (packets: AsyncIterable<Buffer>) => Promise<void> {
     const stream = this.file.createWriteStream({
       autoClose: false,
-      emitClose: false,
       highWaterMark: INTERFACE_MTU,
     });
     return writeToStream(stream);

@@ -48,26 +48,23 @@ function calculateChecksum(buffer: Buffer) {
   const tunInterface = await TunInterface.open();
   console.log('Opened TUN device');
 
-  const abortController = new AbortController();
-  abortController.signal.addEventListener('abort', async () => {
-    console.log('Aborting packet processing');
+  process.on('SIGINT', async () => {
+    console.log('Closing TUN interface');
     await tunInterface.close();
-    console.log('Aborted packet processing');
-  });
-
-  process.on('exit', () => {
-    abortController.abort();
+    console.log('Closed TUN interface');
   });
 
   await pipeline(
-    () => tunInterface.streamPackets(abortController.signal),
-    async function* (packets) {
-      for await (const packet of packets) {
-        console.log('Received packet:', packet.byteLength);
-        yield packet;
-      }
-    },
+    () => tunInterface.streamPackets(),
+    map((packet) => {
+      console.log('I:', packet.toString('hex'));
+      return packet;
+    }),
     map(convertToICMPReply),
+    map((packet) => {
+      console.log('O:', packet.toString('hex'));
+      return packet;
+    }),
     tunInterface.createWriter(),
   );
 })();
