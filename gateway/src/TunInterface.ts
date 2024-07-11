@@ -1,7 +1,9 @@
 import { open, FileHandle } from 'node:fs/promises';
-import { writeToStream } from 'streaming-iterables';
+import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 import { tunAlloc } from './tun-wrapper.cjs';
+import { IpPacket } from './packets/IpPacket.js';
+import { Ipv4Packet } from './packets/Ipv4Packet.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
@@ -50,13 +52,13 @@ export class TunInterface {
     await this.file.close();
   }
 
-  public async *streamPackets(): AsyncIterable<Buffer> {
+  public async *streamPackets(): AsyncIterable<IpPacket> {
     const stream = this.file.createReadStream({
       autoClose: false,
       highWaterMark: INTERFACE_MTU,
     });
     try {
-      yield* stream;
+      yield* pipeline(() => stream, map(Ipv4Packet.init));
     } catch (error: any) {
       if (error.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
         throw error;
@@ -64,11 +66,16 @@ export class TunInterface {
     }
   }
 
-  public createWriter(): (packets: AsyncIterable<Buffer>) => Promise<void> {
+  public createWriter(): (packets: AsyncIterable<IpPacket>) => Promise<void> {
     const stream = this.file.createWriteStream({
       autoClose: false,
       highWaterMark: INTERFACE_MTU,
     });
-    return writeToStream(stream);
+    return (packets: AsyncIterable<IpPacket>) =>
+      pipeline(
+        () => packets,
+        map((packet: IpPacket) => packet.buffer),
+        writeToStream(stream),
+      );
   }
 }

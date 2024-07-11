@@ -1,8 +1,13 @@
 import { map, pipeline } from 'streaming-iterables';
 
 import { TunInterface } from './TunInterface.js';
+import { IpPacket } from './packets/IpPacket.js';
+import { calculateChecksum } from './utils/ip.js';
+import { Ipv4Packet } from './packets/Ipv4Packet.js';
 
-function convertToICMPReply(buffer: Buffer): Buffer {
+function convertToICMPReply(packet: IpPacket): IpPacket {
+  const buffer = packet.buffer;
+
   // IPv4 header modifications (truncate options)
   buffer[0] = (buffer[0] & 0xf0) | 0x05; // Keep IP version as 4 and set header length to 5 (20 bytes)
 
@@ -22,26 +27,16 @@ function convertToICMPReply(buffer: Buffer): Buffer {
   // Reset ICMP checksum
   buffer.writeUInt16BE(0, icmpStart + 2);
 
-  // Recalculate IP header checksum
-  const ipChecksum = calculateChecksum(buffer.subarray(0, 20));
-  buffer.writeUInt16BE(ipChecksum, 10);
+  if (packet instanceof Ipv4Packet) {
+    packet.recalculateChecksum();
+  }
 
   // Recalculate ICMP checksum
   const icmpChecksum = calculateChecksum(buffer.subarray(icmpStart));
   buffer.writeUInt16BE(icmpChecksum, icmpStart + 2);
 
   // TODO: Truncate the buffer too if we truncated the IP header options above.
-  return buffer;
-}
-
-function calculateChecksum(buffer: Buffer) {
-  let sum = 0;
-  for (let i = 0; i < buffer.length; i += 2) {
-    sum += buffer.readUInt16BE(i);
-  }
-  sum = (sum >> 16) + (sum & 0xffff);
-  sum += sum >> 16;
-  return ~sum & 0xffff;
+  return packet;
 }
 
 (async () => {
@@ -57,12 +52,12 @@ function calculateChecksum(buffer: Buffer) {
   await pipeline(
     () => tunInterface.streamPackets(),
     map((packet) => {
-      console.log('I:', packet.toString('hex'));
+      console.log('I:', packet.buffer.toString('hex'));
       return packet;
     }),
     map(convertToICMPReply),
     map((packet) => {
-      console.log('O:', packet.toString('hex'));
+      console.log('O:', packet.buffer.toString('hex'));
       return packet;
     }),
     tunInterface.createWriter(),
