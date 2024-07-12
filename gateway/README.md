@@ -33,4 +33,4 @@ which contain the following licence note:
 /* SPDX-License-Identifier: GPL-2.0+ WITH Linux-syscall-note */
 ```
 
-The [note `WITH Linux-syscall-note`](https://spdx.org/licenses/Linux-syscall-note.html) excepts calling code from the GPL-2.0+ licence.
+The [note `WITH Linux-syscall-note`](https://spdx.org/licenses/Linux-syscall-note.html) exempts calling code from the GPL-2.0+ licence.
