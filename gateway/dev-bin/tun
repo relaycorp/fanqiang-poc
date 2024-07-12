@@ -5,6 +5,7 @@ set -o pipefail
 
 TUN_INTERFACE_NAME="tun0"
 TUN_SUBNET="10.0.0.1/24"
+TUN_INTERFACE_IPV4_ADDRESS="10.0.0.2"
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <up|down>" >&2
@@ -75,7 +76,10 @@ function set_up() {
     sudo ip addr add "${TUN_SUBNET}" dev "${TUN_INTERFACE_NAME}"
     sudo ip link set up dev "${TUN_INTERFACE_NAME}"
 
-    echo "Created ${TUN_INTERFACE_NAME}"
+    # Ensure the interface only receives traffic from its own IP address
+    sudo ip route add "${TUN_INTERFACE_IPV4_ADDRESS}/32" dev "${TUN_INTERFACE_NAME}"
+
+    echo "Created ${TUN_INTERFACE_NAME} (${TUN_INTERFACE_IPV4_ADDRESS})"
 
     # Configure routing
     set_internet_interface_name "${internet_interface}"
@@ -91,6 +95,7 @@ function set_up() {
 }
 
 function tear_down() {
+    sudo ip route del "${TUN_INTERFACE_IPV4_ADDRESS}/32" dev "${TUN_INTERFACE_NAME}"
     sudo ip link set down dev "${TUN_INTERFACE_NAME}"
 
     # Delete the address if it exists. It may not exist if a previous attempt to delete it failed.
