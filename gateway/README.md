@@ -18,7 +18,9 @@ npm install
 
 ### Run
 
-Simply run `npm start`.
+Simply run `npm start` to start the server.
+
+One way to quickly test the server is to run `npm run ping` to ping `1.1.1.1`.
 
 ### Uninstal
 

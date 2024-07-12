@@ -2,22 +2,23 @@ import { Ipv4Packet } from './ipv4/Ipv4Packet.js';
 import { Ipv6Packet } from './ipv6/Ipv6Packet.js';
 import { IpPacket } from './IpPacket.js';
 
-function getIpVersion(buffer: Buffer) {
-  return buffer[0] >> 4;
+const PACKET_CONSTRUCTOR_BY_VERSION = new Map<
+  number,
+  new (buffer: Buffer) => IpPacket<any>
+>([
+  [4, Ipv4Packet],
+  [6, Ipv6Packet],
+]);
+
+function getIpVersion(packet: Buffer) {
+  return packet[0] >> 4;
 }
 
-export function initPacket(buffer: Buffer): IpPacket<any> {
-  const version = getIpVersion(buffer);
-  let packet: IpPacket<any>;
-  switch (version) {
-    case 4:
-      packet = new Ipv4Packet(buffer);
-      break;
-    case 6:
-      packet = new Ipv6Packet(buffer);
-      break;
-    default:
-      throw new Error(`Unsupported IP version: ${version}`);
+export function initPacket(packet: Buffer): IpPacket<any> {
+  const ipVersion = getIpVersion(packet);
+  const packetConstructor = PACKET_CONSTRUCTOR_BY_VERSION.get(ipVersion);
+  if (!packetConstructor) {
+    throw new Error(`Unsupported IP version: ${ipVersion}`);
   }
-  return packet;
+  return new packetConstructor(packet);
 }

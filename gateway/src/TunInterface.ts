@@ -1,7 +1,8 @@
 import { open, FileHandle } from 'node:fs/promises';
 import { map, pipeline, writeToStream } from 'streaming-iterables';
 
-import { tunAlloc } from './tun-wrapper.cjs';
+// @ts-ignore
+import { tunAlloc } from './tun-wrapper.cjs'; // TODO: Fix type definitions
 import { IpPacket } from './packets/IpPacket.js';
 import { initPacket } from './packets/init.js';
 
@@ -52,7 +53,7 @@ export class TunInterface {
     await this.file.close();
   }
 
-  public async *createReader(): AsyncIterable<IpPacket> {
+  public async *createReader(): AsyncIterable<IpPacket<any>> {
     const stream = this.file.createReadStream({
       autoClose: false,
       highWaterMark: INTERFACE_MTU,
@@ -67,15 +68,17 @@ export class TunInterface {
     }
   }
 
-  public createWriter(): (packets: AsyncIterable<IpPacket>) => Promise<void> {
+  public createWriter(): (
+    packets: AsyncIterable<IpPacket<any>>,
+  ) => Promise<void> {
     const stream = this.file.createWriteStream({
       autoClose: false,
       highWaterMark: INTERFACE_MTU,
     });
-    return (packets: AsyncIterable<IpPacket>) =>
+    return (packets) =>
       pipeline(
         () => packets,
-        map((packet: IpPacket) => packet.buffer),
+        map((packet) => packet.buffer),
         writeToStream(stream),
       );
   }
