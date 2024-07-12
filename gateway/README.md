@@ -26,8 +26,8 @@ One way to quickly test the server is to run `npm run ping` to ping `1.1.1.1`.
 
 ## Copyright notes
 
-This project implements system calls to the Linux kernel,
-including header files (e.g. `linux/if_tun.h`) containing the following licence header:
+This project uses libraries from the Linux kernel (e.g. `linux/if_tun.h`),
+which contain the following licence note:
 
 ```
 /* SPDX-License-Identifier: GPL-2.0+ WITH Linux-syscall-note */
