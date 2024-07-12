@@ -20,7 +20,7 @@ CONFIGURED_INTERNET_INTERFACE_NAME_FILE="${CONFIG_DIR}/internet-interface-name"
 
 function get_default_interface() {
     local internet_route
-    internet_route="$(ip route | grep '^default')"
+    internet_route="$(ip route show default)"
 
     if [ -z "${internet_route}" ]; then
         echo "Error: No internet route found" >&2
@@ -60,6 +60,28 @@ function is_traffic_from_tun_interface_masquerared() {
     return 0
 }
 
+function masquerade_traffic_from_tun_interface() {
+    local internet_interface="$1"
+
+    sudo iptables --table nat \
+        --append POSTROUTING \
+        --jump MASQUERADE \
+        --out-interface "${internet_interface}" \
+        --source "${TUN_SUBNET}" \
+        --destination 0.0.0.0/0
+}
+
+function drop_masquerading_from_tun_interface() {
+    local internet_interface="$1"
+
+    sudo iptables --table nat \
+        --delete POSTROUTING \
+        --jump MASQUERADE \
+        --out-interface "${internet_interface}" \
+        --source "${TUN_SUBNET}" \
+        --destination 0.0.0.0/0
+}
+
 function set_up() {
     local internet_interface
     internet_interface="$(get_default_interface)"
@@ -84,18 +106,17 @@ function set_up() {
     # Configure routing
     set_internet_interface_name "${internet_interface}"
     if ! is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
-        sudo iptables --table nat \
-            --append POSTROUTING \
-            --jump MASQUERADE \
-            --out-interface "${internet_interface}" \
-            --source "${TUN_SUBNET}" \
-            --destination 0.0.0.0/0
+        masquerade_traffic_from_tun_interface "${internet_interface}"
         echo "Set up NAT to masquerade traffic from ${TUN_INTERFACE_NAME} to ${internet_interface}"
     fi
 }
 
 function tear_down() {
-    sudo ip route del "${TUN_INTERFACE_IPV4_ADDRESS}/32" dev "${TUN_INTERFACE_NAME}"
+    if [ -n "$(ip route show dev ${TUN_INTERFACE_NAME} "${TUN_INTERFACE_IPV4_ADDRESS}/32")" ]; then
+      sudo ip route del "${TUN_INTERFACE_IPV4_ADDRESS}/32" dev "${TUN_INTERFACE_NAME}"
+      echo "Deleted route for ${TUN_INTERFACE_IPV4_ADDRESS} on ${TUN_INTERFACE_NAME}"
+    fi
+
     sudo ip link set down dev "${TUN_INTERFACE_NAME}"
 
     # Delete the address if it exists. It may not exist if a previous attempt to delete it failed.
@@ -112,12 +133,7 @@ function tear_down() {
         local internet_interface
         internet_interface="$(get_internet_interface_name)"
         if is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
-            sudo iptables --table nat \
-                --delete POSTROUTING \
-                --jump MASQUERADE \
-                --out-interface "${internet_interface}" \
-                --source "${TUN_SUBNET}" \
-                --destination 0.0.0.0/0
+            drop_masquerading_from_tun_interface "${internet_interface}"
             echo "Removed NAT masquerading for traffic from ${TUN_INTERFACE_NAME} to ${internet_interface}"
         fi
 
