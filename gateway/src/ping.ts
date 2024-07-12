@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import { calculateChecksum } from './utils/ip.js';
 import { Ipv4Address } from './packets/ipv4/Ipv4Address.js';
 import { Ipv4Packet } from './packets/ipv4/Ipv4Packet.js';
+import { initPacket } from './packets/init.js';
 
 const GATEWAY_URL = 'ws://localhost:8080';
 const SOURCE_ADDRESS = Ipv4Address.fromString('1.2.3.4');
@@ -59,7 +60,7 @@ ws.on('open', () => {
 });
 
 ws.on('message', (data: Buffer) => {
-  const packet = new Ipv4Packet(data);
+  const packet = initPacket(data);
   console.log(`↓ ${packet}`);
 });
 
