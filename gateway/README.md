@@ -6,9 +6,8 @@
 
 Prerequisites:
 
-- Linux system.
-- Python 3 with the `distutils` package. On Linux, you can instal it with `sudo apt install python3-setuptools`.
-- To create and configure the TUN device, run `dev-bin/tun up`.
+- A Debian-based system. This may or may not work on other Linux distributions.
+- Python 3 with the `distutils` package. On Ubuntu, you can instal it with `sudo apt install python3-setuptools`.
 
 Finally, run:
 
@@ -18,13 +17,12 @@ npm install
 
 ### Run
 
-Simply run `npm start` to start the server.
+You have to create and configure the TUN device with `dev-bin/tun up` before starting the server.
+When you no longer need the server, run `dev-bin/tun down`.
+
+To start the server, simply run `npm start`.
 
 One way to quickly test the server is to run `npm run ping` to ping `1.1.1.1`.
-
-### Uninstal
-
-- To remove the TUN device, run `dev-bin/tun down`.
 
 ## Copyright notes
 
