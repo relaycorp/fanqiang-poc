@@ -4,31 +4,126 @@ set -o errexit
 set -o pipefail
 
 TUN_DEVICE_NAME="tun0"
+
 TUN_SUBNET="10.0.0.1/24"
 
 if [ $# -ne 1 ]; then
-    echo "Usage: $0 <up|down>"
+    echo "Usage: $0 <up|down>" >&2
     exit 1
 fi
+
+CURRENT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+ROOT_DIR="$(realpath "${CURRENT_DIR}/..")"
+CONFIG_DIR="${ROOT_DIR}/dev-config"
+
+CONFIGURED_INTERNET_INTERFACE_NAME_FILE="${CONFIG_DIR}/internet-interface-name"
+
+function get_internet_interface() {
+    local internet_route
+    internet_route="$(ip route | grep '^default')"
+
+    if [ -z "${internet_route}" ]; then
+        echo "Error: No internet route found" >&2
+        exit 2
+    fi
+
+    echo "${internet_route}" | awk '{print $5}'
+}
+
+function save_internet_interface_name() {
+    local internet_interface="$1"
+
+    mkdir --parents "$(dirname "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}")"
+
+    echo "${internet_interface}" > "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
+}
+
+function is_internet_interface_configured() {
+    [ -f "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}" ]
+}
+
+function get_configured_internet_interface_name() {
+    cat "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
+}
+
+function is_traffic_from_tun_interface_masquerared() {
+    local internet_interface="$1"
+
+    if ! sudo iptables --table nat --check POSTROUTING --out-interface "${internet_interface}" --source "${TUN_SUBNET}" --destination 0.0.0.0/0 --jump MASQUERADE 2>>/dev/null; then
+        return 1
+    fi
+
+    return 0
+}
+
+function set_up() {
+    local internet_interface
+    internet_interface="$(get_internet_interface)"
+
+    if ! grep --fixed-strings --quiet "1" "/proc/sys/net/ipv4/conf/${internet_interface}/forwarding"; then
+        echo "Error: IPv4 forwarding is not enabled on ${internet_interface}" >&2
+        exit 3
+    fi
+
+    sudo ip tuntap add \
+        dev "${TUN_DEVICE_NAME}" \
+        mode tun \
+        user "${USER}"
+    sudo ip addr add "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
+    sudo ip link set up dev "${TUN_DEVICE_NAME}"
+
+    echo "Created device ${TUN_DEVICE_NAME}"
+
+    # Configure routing
+    save_internet_interface_name "${internet_interface}"
+    if ! is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
+        sudo iptables --table nat \
+            --append POSTROUTING \
+            --jump MASQUERADE \
+            --out-interface "${internet_interface}" \
+            --source "${TUN_SUBNET}" \
+            --destination 0.0.0.0/0
+        echo "Set up NAT to masquerade traffic from ${TUN_DEVICE_NAME} to ${internet_interface}"
+    fi
+}
+
+function tear_down() {
+    sudo ip link set down dev "${TUN_DEVICE_NAME}"
+
+    # Delete the address if it exists. It may not exist if a previous attempt to delete it failed.
+    if ip addr show "${TUN_DEVICE_NAME}" | grep --quiet "${TUN_SUBNET}"; then
+        sudo ip addr del "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
+    fi
+
+    sudo ip tuntap del \
+        dev "${TUN_DEVICE_NAME}" \
+        mode tun
+    echo "Deleted device ${TUN_DEVICE_NAME}"
+
+    if is_internet_interface_configured; then
+        local internet_interface
+        internet_interface="$(get_configured_internet_interface_name)"
+        if is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
+            sudo iptables --table nat \
+                --delete POSTROUTING \
+                --jump MASQUERADE \
+                --out-interface "${internet_interface}" \
+                --source "${TUN_SUBNET}" \
+                --destination 0.0.0.0/0
+            echo "Removed NAT masquerading for traffic from ${TUN_DEVICE_NAME} to ${internet_interface}"
+        fi
+
+        rm "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
+    fi
+}
 
 # Determine action based on argument
 case "$1" in
     up)
-        sudo ip tuntap add \
-            dev "${TUN_DEVICE_NAME}" \
-            mode tun \
-            user "${USER}"
-        sudo ip addr add "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
-        sudo ip link set up dev "${TUN_DEVICE_NAME}"
-        echo "Created device ${TUN_DEVICE_NAME}"
+        set_up
         ;;
     down)
-        sudo ip link set down dev "${TUN_DEVICE_NAME}"
-        sudo ip addr del "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
-        sudo ip tuntap del \
-            dev "${TUN_DEVICE_NAME}" \
-            mode tun
-        echo "Deleted device ${TUN_DEVICE_NAME}"
+        tear_down
         ;;
     *)
         exit 1
