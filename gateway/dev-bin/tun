@@ -3,8 +3,7 @@ set -o nounset
 set -o errexit
 set -o pipefail
 
-TUN_DEVICE_NAME="tun0"
-
+TUN_INTERFACE_NAME="tun0"
 TUN_SUBNET="10.0.0.1/24"
 
 if [ $# -ne 1 ]; then
@@ -70,13 +69,13 @@ function set_up() {
     fi
 
     sudo ip tuntap add \
-        dev "${TUN_DEVICE_NAME}" \
+        dev "${TUN_INTERFACE_NAME}" \
         mode tun \
         user "${USER}"
-    sudo ip addr add "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
-    sudo ip link set up dev "${TUN_DEVICE_NAME}"
+    sudo ip addr add "${TUN_SUBNET}" dev "${TUN_INTERFACE_NAME}"
+    sudo ip link set up dev "${TUN_INTERFACE_NAME}"
 
-    echo "Created device ${TUN_DEVICE_NAME}"
+    echo "Created ${TUN_INTERFACE_NAME}"
 
     # Configure routing
     set_internet_interface_name "${internet_interface}"
@@ -87,22 +86,22 @@ function set_up() {
             --out-interface "${internet_interface}" \
             --source "${TUN_SUBNET}" \
             --destination 0.0.0.0/0
-        echo "Set up NAT to masquerade traffic from ${TUN_DEVICE_NAME} to ${internet_interface}"
+        echo "Set up NAT to masquerade traffic from ${TUN_INTERFACE_NAME} to ${internet_interface}"
     fi
 }
 
 function tear_down() {
-    sudo ip link set down dev "${TUN_DEVICE_NAME}"
+    sudo ip link set down dev "${TUN_INTERFACE_NAME}"
 
     # Delete the address if it exists. It may not exist if a previous attempt to delete it failed.
-    if ip addr show "${TUN_DEVICE_NAME}" | grep --quiet "${TUN_SUBNET}"; then
-        sudo ip addr del "${TUN_SUBNET}" dev "${TUN_DEVICE_NAME}"
+    if ip addr show "${TUN_INTERFACE_NAME}" | grep --quiet "${TUN_SUBNET}"; then
+        sudo ip addr del "${TUN_SUBNET}" dev "${TUN_INTERFACE_NAME}"
     fi
 
     sudo ip tuntap del \
-        dev "${TUN_DEVICE_NAME}" \
+        dev "${TUN_INTERFACE_NAME}" \
         mode tun
-    echo "Deleted device ${TUN_DEVICE_NAME}"
+    echo "Deleted ${TUN_INTERFACE_NAME}"
 
     if is_internet_interface_set; then
         local internet_interface
@@ -114,7 +113,7 @@ function tear_down() {
                 --out-interface "${internet_interface}" \
                 --source "${TUN_SUBNET}" \
                 --destination 0.0.0.0/0
-            echo "Removed NAT masquerading for traffic from ${TUN_DEVICE_NAME} to ${internet_interface}"
+            echo "Removed NAT masquerading for traffic from ${TUN_INTERFACE_NAME} to ${internet_interface}"
         fi
 
         unset_internet_interface_name
