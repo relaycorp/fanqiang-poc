@@ -18,7 +18,7 @@ CONFIG_DIR="${ROOT_DIR}/dev-config"
 
 CONFIGURED_INTERNET_INTERFACE_NAME_FILE="${CONFIG_DIR}/internet-interface-name"
 
-function get_internet_interface() {
+function get_default_interface() {
     local internet_route
     internet_route="$(ip route | grep '^default')"
 
@@ -30,7 +30,7 @@ function get_internet_interface() {
     echo "${internet_route}" | awk '{print $5}'
 }
 
-function save_internet_interface_name() {
+function set_internet_interface_name() {
     local internet_interface="$1"
 
     mkdir --parents "$(dirname "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}")"
@@ -38,11 +38,15 @@ function save_internet_interface_name() {
     echo "${internet_interface}" > "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
 }
 
-function is_internet_interface_configured() {
+function unset_internet_interface_name() {
+    rm "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
+}
+
+function is_internet_interface_set() {
     [ -f "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}" ]
 }
 
-function get_configured_internet_interface_name() {
+function get_internet_interface_name() {
     cat "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
 }
 
@@ -58,7 +62,7 @@ function is_traffic_from_tun_interface_masquerared() {
 
 function set_up() {
     local internet_interface
-    internet_interface="$(get_internet_interface)"
+    internet_interface="$(get_default_interface)"
 
     if ! grep --fixed-strings --quiet "1" "/proc/sys/net/ipv4/conf/${internet_interface}/forwarding"; then
         echo "Error: IPv4 forwarding is not enabled on ${internet_interface}" >&2
@@ -75,7 +79,7 @@ function set_up() {
     echo "Created device ${TUN_DEVICE_NAME}"
 
     # Configure routing
-    save_internet_interface_name "${internet_interface}"
+    set_internet_interface_name "${internet_interface}"
     if ! is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
         sudo iptables --table nat \
             --append POSTROUTING \
@@ -100,9 +104,9 @@ function tear_down() {
         mode tun
     echo "Deleted device ${TUN_DEVICE_NAME}"
 
-    if is_internet_interface_configured; then
+    if is_internet_interface_set; then
         local internet_interface
-        internet_interface="$(get_configured_internet_interface_name)"
+        internet_interface="$(get_internet_interface_name)"
         if is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
             sudo iptables --table nat \
                 --delete POSTROUTING \
@@ -113,7 +117,7 @@ function tear_down() {
             echo "Removed NAT masquerading for traffic from ${TUN_DEVICE_NAME} to ${internet_interface}"
         fi
 
-        rm "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
+        unset_internet_interface_name
     fi
 }
 
