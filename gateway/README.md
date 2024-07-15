@@ -1,5 +1,7 @@
 # VPN Gateway
 
+The VPN Gateway is a server that forwards packets between a tunnel and the Internet, via a TUN device.
+
 ## Development
 
 ### Instal
