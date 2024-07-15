@@ -1,6 +1,6 @@
 import { InvalidPacketError } from '../InvalidPacketError.js';
 import { IpPacket } from '../IpPacket.js';
-import { calculateChecksum } from '../../utils/ip.js';
+import { calculateChecksum } from '../../utils/checksum.js';
 import { Ipv4Address } from './Ipv4Address.js';
 
 const MIN_IPV4_PACKET_LENGTH = 20;

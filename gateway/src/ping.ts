@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 
-import { calculateChecksum } from './utils/ip.js';
+import { calculateChecksum } from './utils/checksum.js';
 import { Ipv4Address } from './packets/ipv4/Ipv4Address.js';
 import { Ipv4Packet } from './packets/ipv4/Ipv4Packet.js';
 import { initPacket } from './packets/init.js';

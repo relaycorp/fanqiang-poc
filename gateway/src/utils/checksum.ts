@@ -1,4 +1,9 @@
-export function calculateChecksum(buffer: Buffer) {
+/**
+ * Run the _Internet Checksum_ on the given buffer.
+ *
+ * @param buffer
+ */
+export function calculateChecksum(buffer: Buffer): number {
   let sum = 0;
   for (let i = 0; i < buffer.length; i += 2) {
     sum += buffer.readUInt16BE(i);
