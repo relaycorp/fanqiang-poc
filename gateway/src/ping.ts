@@ -1,9 +1,9 @@
 import WebSocket from 'ws';
 
-import { calculateChecksum } from './utils/checksum.js';
-import { Ipv4Address } from './packets/ipv4/Ipv4Address.js';
-import { Ipv4Packet } from './packets/ipv4/Ipv4Packet.js';
-import { initPacket } from './packets/init.js';
+import { calculateChecksum } from './ip/checksum.js';
+import { Ipv4Address } from './ip/ipv4/Ipv4Address.js';
+import { Ipv4Packet } from './ip/ipv4/Ipv4Packet.js';
+import { initPacket } from './ip/packets.js';
 
 const GATEWAY_URL = 'ws://localhost:8080';
 const SOURCE_ADDRESS = Ipv4Address.fromString('1.2.3.4');

@@ -3,10 +3,10 @@ import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
 import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
 
 import { TunInterface } from './TunInterface.js';
-import { Ipv4Address } from './packets/ipv4/Ipv4Address.js';
-import { IpPacket } from './packets/IpPacket.js';
-import { initPacket } from './packets/init.js';
-import { Ipv4Packet } from './packets/ipv4/Ipv4Packet.js';
+import { Ipv4Address } from './ip/ipv4/Ipv4Address.js';
+import { IpPacket } from './ip/IpPacket.js';
+import { initPacket } from './ip/packets.js';
+import { Ipv4Packet } from './ip/ipv4/Ipv4Packet.js';
 
 // TODO: Retrieve using `os.networkInterfaces()`
 const GATEWAY_IPV4_ADDRESS = '10.0.0.2';
