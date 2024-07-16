@@ -48,12 +48,7 @@ function forwardPacketsFromTunnel(
         return null;
       }
 
-      // TODO: Decrease packet TTL or hop limit
-
-      if (packet instanceof Ipv4Packet) {
-        packet.setSourceAddress(gatewayIpv4Address);
-        packet.recalculateChecksum();
-      } else {
+      if (packet instanceof Ipv6Packet) {
         // TODO: Add IPv6 support
         console.log('✖ T→I: Unsupported IPv6 packet');
         return null;
@@ -65,6 +60,13 @@ function forwardPacketsFromTunnel(
       } else {
         console.log(`✖ T→I: ${packet} (error: ${ipPacketValidation})`);
         return null;
+      }
+
+      // TODO: Decrease packet TTL or hop limit
+
+      if (packet instanceof Ipv4Packet) {
+        packet.setSourceAddress(gatewayIpv4Address);
+        packet.recalculateChecksum();
       }
 
       return packet;
