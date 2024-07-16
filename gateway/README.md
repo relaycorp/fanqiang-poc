@@ -2,6 +2,10 @@
 
 The VPN Gateway is a server that forwards packets between a tunnel and the Internet, via a TUN device.
 
+## Architecture
+
+- Translation method: Port-restricted cone NAT for compatibility with P2P protocols.
+
 ## Development
 
 ### Instal
@@ -25,6 +29,21 @@ When you no longer need the server, run `dev-bin/tun down`.
 To start the server, simply run `npm start`.
 
 One way to quickly test the server is to run `npm run ping` to ping `1.1.1.1`.
+
+## Implementation notes
+
+- Packets are processed in a mutable manner to keep RAM usage low.
+  For example, when forwarding a packet,
+  its source/destination IP address and port are rewritten in place to avoid duplicating the packet.
+
+## Missing features
+
+An eventual production implementation should support:
+
+- Transport protocols other than TCP and UDP.
+  Specifically,
+  protocols whose data units contain source and destination ports to facilitate NAT traversal.
+  For example, SCTP and DCCP, but not ICMP or IL.
 
 ## Copyright notes
 
