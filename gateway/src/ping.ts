@@ -38,8 +38,8 @@ function wrapPayloadInIpv4Packet(
   payload.copy(buffer, 20);
 
   const packet = new Ipv4Packet(buffer);
-  packet.replaceSourceAddress(sourceAddress);
-  packet.replaceDestinationAddress(destinationAddress);
+  packet.setSourceAddress(sourceAddress);
+  packet.setDestinationAddress(destinationAddress);
   packet.recalculateChecksum();
 
   return packet;

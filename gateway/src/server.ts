@@ -4,9 +4,11 @@ import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
 
 import { TunInterface } from './TunInterface.js';
 import { Ipv4Address } from './ip/ipv4/Ipv4Address.js';
-import { IpPacket } from './ip/IpPacket.js';
 import { initPacket } from './ip/packets.js';
 import { Ipv4Packet } from './ip/ipv4/Ipv4Packet.js';
+import { Ipv4OrIpv6Packet } from './ip/Ipv4OrIpv6Packet.js';
+import { IpPacketValidation } from './ip/IpPacketValidation.js';
+import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
 
 // TODO: Retrieve using `os.networkInterfaces()`
 const GATEWAY_IPV4_ADDRESS = '10.0.0.2';
@@ -32,12 +34,12 @@ const gatewayIpv4Address = Ipv4Address.fromString(GATEWAY_IPV4_ADDRESS);
 function forwardPacketsFromTunnel(
   wsStream: Duplex,
   wsClient: WebSocket,
-  tunWriteStream: (packets: AsyncIterable<IpPacket<any>>) => Promise<void>,
+  tunWriteStream: (packets: AsyncIterable<Ipv4OrIpv6Packet>) => Promise<void>,
 ) {
   return pipeline(
     () => wsStream,
     map((packetBuffer) => {
-      let packet: IpPacket<any>;
+      let packet: Ipv4OrIpv6Packet;
       try {
         packet = initPacket(packetBuffer);
       } catch (err: any) {
@@ -46,27 +48,35 @@ function forwardPacketsFromTunnel(
         return null;
       }
 
-      console.log(`T→I: ${packet}`);
+      // TODO: Decrease packet TTL or hop limit
 
       if (packet instanceof Ipv4Packet) {
-        packet.replaceSourceAddress(gatewayIpv4Address);
+        packet.setSourceAddress(gatewayIpv4Address);
         packet.recalculateChecksum();
       } else {
         // TODO: Add IPv6 support
-        console.error('Unsupported IP version:', packet);
+        console.log('✖ T→I: Unsupported IPv6 packet');
+        return null;
+      }
+
+      const ipPacketValidation = packet.validate();
+      if (ipPacketValidation === IpPacketValidation.VALID) {
+        console.log(`✔ T→I: ${packet}`);
+      } else {
+        console.log(`✖ T→I: ${packet} (error: ${ipPacketValidation})`);
         return null;
       }
 
       return packet;
     }),
-    filter((packet): packet is IpPacket<any> => packet !== undefined),
+    filter((packet): packet is Ipv4OrIpv6Packet => packet !== null),
     tunWriteStream,
   );
 }
 
 function forwardPacketsFromInternet(
   wsStream: Duplex,
-  tunReadStream: AsyncIterable<IpPacket<any>>,
+  tunReadStream: AsyncIterable<Ipv4OrIpv6Packet>,
 ) {
   // TODO: Restore the client's IP address
 
@@ -74,9 +84,22 @@ function forwardPacketsFromInternet(
   return pipeline(
     () => tunReadStream,
     map((packet) => {
-      console.log(`I→T: ${packet}`);
+      if (packet instanceof Ipv6Packet) {
+        console.error('✖ I→T: Unsupported IPv6 packet');
+        return null;
+      }
+
+      const ipPacketValidation = packet.validate();
+      if (ipPacketValidation === IpPacketValidation.VALID) {
+        console.log(`✔ I→T: ${packet}`);
+      } else {
+        console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
+        return null;
+      }
+
       return packet.buffer;
     }),
+    filter((packet): packet is Ipv4OrIpv6Packet => packet !== null),
     writeToStream(wsStream),
   );
 }

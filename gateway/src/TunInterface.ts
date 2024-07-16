@@ -3,8 +3,8 @@ import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 // @ts-ignore
 import { tunAlloc } from './tun-wrapper.cjs'; // TODO: Fix type definitions
-import { IpPacket } from './ip/IpPacket.js';
 import { initPacket } from './ip/packets.js';
+import { Ipv4OrIpv6Packet } from './ip/Ipv4OrIpv6Packet.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
@@ -53,7 +53,7 @@ export class TunInterface {
     await this.file.close();
   }
 
-  public async *createReader(): AsyncIterable<IpPacket<any>> {
+  public async *createReader(): AsyncIterable<Ipv4OrIpv6Packet> {
     const stream = this.file.createReadStream({
       autoClose: false,
       highWaterMark: INTERFACE_MTU,
@@ -69,7 +69,7 @@ export class TunInterface {
   }
 
   public createWriter(): (
-    packets: AsyncIterable<IpPacket<any>>,
+    packets: AsyncIterable<Ipv4OrIpv6Packet>,
   ) => Promise<void> {
     const stream = this.file.createWriteStream({
       autoClose: false,

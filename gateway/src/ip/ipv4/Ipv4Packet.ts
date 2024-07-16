@@ -2,6 +2,7 @@ import { InvalidPacketError } from '../InvalidPacketError.js';
 import { IpPacket } from '../IpPacket.js';
 import { calculateChecksum } from '../checksum.js';
 import { Ipv4Address } from './Ipv4Address.js';
+import { IpPacketValidation } from '../IpPacketValidation.js';
 
 const MIN_IPV4_PACKET_LENGTH = 20;
 const MIN_IHL = 5;
@@ -9,6 +10,8 @@ const MIN_IHL = 5;
 enum HeaderFieldIndex {
   IHL = 0,
   TOTAL_LENGTH = 2,
+  TTL = 8,
+  PROTOCOL = 9,
   CHECKSUM = 10,
   SOURCE_ADDRESS = 12,
   DESTINATION_ADDRESS = 16,
@@ -42,6 +45,14 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
     }
   }
 
+  protected override getHopLimit(): number {
+    return this.buffer[HeaderFieldIndex.TTL];
+  }
+
+  public override getTransportProtocol(): number {
+    return this.buffer[HeaderFieldIndex.PROTOCOL];
+  }
+
   private getHeaderLength() {
     // Length = IHL × 32 (bits) / 8 (bytes) = IHL × 4
     return getIhl(this.buffer) * 4;
@@ -52,16 +63,12 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
     return this.buffer.subarray(0, headerLength);
   }
 
-  public recalculateChecksum(): void {
+  public recalculateChecksum(): number {
     const header = this.getHeaderBuffer();
     header.writeUInt16BE(0, HeaderFieldIndex.CHECKSUM);
     const newChecksum = calculateChecksum(header);
     header.writeUInt16BE(newChecksum, HeaderFieldIndex.CHECKSUM);
-  }
-
-  public override getPayload(): Buffer {
-    const payloadOffset = this.getHeaderLength();
-    return this.buffer.subarray(payloadOffset);
+    return newChecksum;
   }
 
   override getSourceAddress(): Ipv4Address {
@@ -72,7 +79,7 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
     return new Ipv4Address(addressBuffer);
   }
 
-  override replaceSourceAddress(newIpAddress: Ipv4Address): void {
+  override setSourceAddress(newIpAddress: Ipv4Address): void {
     newIpAddress.buffer.copy(this.buffer, HeaderFieldIndex.SOURCE_ADDRESS);
   }
 
@@ -84,7 +91,31 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
     return new Ipv4Address(addressBuffer);
   }
 
-  override replaceDestinationAddress(newIpAddress: Ipv4Address): void {
+  override setDestinationAddress(newIpAddress: Ipv4Address): void {
     newIpAddress.buffer.copy(this.buffer, HeaderFieldIndex.DESTINATION_ADDRESS);
+  }
+
+  public override getPayload(): Buffer {
+    const payloadOffset = this.getHeaderLength();
+    return this.buffer.subarray(payloadOffset);
+  }
+
+  protected isChecksumValid(): boolean {
+    const originalChecksum = this.buffer.readUInt16BE(
+      HeaderFieldIndex.CHECKSUM,
+    );
+    this.buffer.writeUInt16BE(0, HeaderFieldIndex.CHECKSUM);
+    const finalChecksum = this.recalculateChecksum();
+    if (originalChecksum !== finalChecksum) {
+      this.buffer.writeUInt16BE(originalChecksum, HeaderFieldIndex.CHECKSUM);
+    }
+    return originalChecksum === finalChecksum;
+  }
+
+  public override validate(): IpPacketValidation {
+    if (!this.isChecksumValid()) {
+      return IpPacketValidation.INVALID_CHECKSUM;
+    }
+    return super.validate();
   }
 }
