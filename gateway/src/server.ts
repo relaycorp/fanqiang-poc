@@ -1,14 +1,14 @@
 import { Duplex } from 'node:stream';
 import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
-import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
+import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
 
 import { TunInterface } from './TunInterface.js';
 import { Ipv4Address } from './ip/ipv4/Ipv4Address.js';
 import { initPacket } from './ip/packets.js';
-import { Ipv4Packet } from './ip/ipv4/Ipv4Packet.js';
 import { Ipv4OrIpv6Packet } from './ip/Ipv4OrIpv6Packet.js';
 import { IpPacketValidation } from './ip/IpPacketValidation.js';
 import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
+import { ForwardingSide } from './nat/ForwardingSide.js';
 
 // TODO: Retrieve using `os.networkInterfaces()`
 const GATEWAY_IPV4_ADDRESS = '10.0.0.2';
@@ -30,6 +30,10 @@ async function shutDown() {
 process.on('SIGINT', shutDown);
 
 const gatewayIpv4Address = Ipv4Address.fromString(GATEWAY_IPV4_ADDRESS);
+
+function isPacket(packet: Ipv4OrIpv6Packet | null): packet is Ipv4OrIpv6Packet {
+  return packet !== null;
+}
 
 function forwardPacketsFromTunnel(
   wsStream: Duplex,
@@ -56,22 +60,17 @@ function forwardPacketsFromTunnel(
 
       const ipPacketValidation = packet.validate();
       if (ipPacketValidation === IpPacketValidation.VALID) {
+        packet.prepareForForwarding(ForwardingSide.SOURCE, gatewayIpv4Address);
+
         console.log(`✔ T→I: ${packet}`);
       } else {
         console.log(`✖ T→I: ${packet} (error: ${ipPacketValidation})`);
         return null;
       }
 
-      // TODO: Decrease packet TTL or hop limit
-
-      if (packet instanceof Ipv4Packet) {
-        packet.setSourceAddress(gatewayIpv4Address);
-        packet.recalculateChecksum();
-      }
-
       return packet;
     }),
-    filter((packet): packet is Ipv4OrIpv6Packet => packet !== null),
+    filter(isPacket),
     tunWriteStream,
   );
 }
@@ -101,7 +100,7 @@ function forwardPacketsFromInternet(
 
       return packet.buffer;
     }),
-    filter((packet): packet is Ipv4OrIpv6Packet => packet !== null),
+    filter((packet): packet is Buffer => packet !== null),
     writeToStream(wsStream),
   );
 }

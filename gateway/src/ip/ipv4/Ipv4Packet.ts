@@ -3,6 +3,7 @@ import { IpPacket } from '../IpPacket.js';
 import { calculateChecksum } from '../checksum.js';
 import { Ipv4Address } from './Ipv4Address.js';
 import { IpPacketValidation } from '../IpPacketValidation.js';
+import { ForwardingSide } from '../../nat/ForwardingSide.js';
 
 const MIN_IPV4_PACKET_LENGTH = 20;
 const MIN_IHL = 5;
@@ -47,6 +48,11 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
 
   protected override getHopLimit(): number {
     return this.buffer[HeaderFieldIndex.TTL];
+  }
+
+  protected override decrementHopLimit(): void {
+    const hopLimit = this.getHopLimit();
+    this.buffer.writeUInt8(hopLimit - 1, HeaderFieldIndex.TTL);
   }
 
   public override getTransportProtocol(): number {
@@ -117,5 +123,13 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
       return IpPacketValidation.INVALID_CHECKSUM;
     }
     return super.validate();
+  }
+
+  public override prepareForForwarding(
+    side: ForwardingSide,
+    address: Ipv4Address,
+  ) {
+    super.prepareForForwarding(side, address);
+    this.recalculateChecksum();
   }
 }

@@ -3,6 +3,7 @@ import { Ipv4OrIpv6Address } from './Ipv4OrIpv6Address.js';
 import { BaseIpChecksumContext } from '../serviceDataUnits/checksums/IpChecksumContext.js';
 import { initServiceData } from '../serviceDataUnits/init.js';
 import { IpPacketValidation } from './IpPacketValidation.js';
+import { ForwardingSide } from '../nat/ForwardingSide.js';
 
 export abstract class IpPacket<Address extends Ipv4OrIpv6Address> {
   constructor(public buffer: Buffer) {}
@@ -14,6 +15,7 @@ export abstract class IpPacket<Address extends Ipv4OrIpv6Address> {
   public abstract setDestinationAddress(newIpAddress: Address): void;
 
   protected abstract getHopLimit(): number;
+  protected abstract decrementHopLimit(): void;
 
   public abstract getTransportProtocol(): number;
 
@@ -49,6 +51,16 @@ export abstract class IpPacket<Address extends Ipv4OrIpv6Address> {
     return IpPacketValidation.VALID;
   }
 
+  public prepareForForwarding(side: ForwardingSide, address: Address): void {
+    if (side === ForwardingSide.SOURCE) {
+      this.setSourceAddress(address);
+    } else {
+      this.setDestinationAddress(address);
+    }
+
+    this.decrementHopLimit();
+  }
+
   public toString(): string {
     const serviceData = this.getServiceData();
     let serviceDataInfo: string;
@@ -57,6 +69,7 @@ export abstract class IpPacket<Address extends Ipv4OrIpv6Address> {
     } else {
       serviceDataInfo = serviceData.toString();
     }
-    return `${this.getSourceAddress()} → ${this.getDestinationAddress()}. Payload: ${serviceDataInfo}`;
+    const hopLimit = this.getHopLimit();
+    return `${this.getSourceAddress()} → ${this.getDestinationAddress()} (TTL: ${hopLimit}). Payload: ${serviceDataInfo}`;
   }
 }
