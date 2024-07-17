@@ -121,6 +121,6 @@ but it's too soon to tell if it will be reliable enough for production.
 In other words,
 we would've used the WireGuard® protocol had it not been for its current implementations,
 which would make it too risky and costly to deploy to production in our case.
-If we go through with this project,
-and it becomes successful,
-we'll probably replace our VPN protocol with WireGuard®.
+If this project takes off,
+we'll probably replace our VPN protocol with WireGuard®,
+so we can focus on the tunnelling.
