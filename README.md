@@ -66,10 +66,7 @@ the technique has been studied academically under the name
 by offering a trivial and universal way to turn any HTTPS website into a tunnel.
 Here,
 tunnels are simply reverse proxies,
-so this low barrier should allow us to offer a far greater ratio of tunnels to users,
-which will in turn make it harder for censors to enumerate them,
-whilst making it easy to camouflage VPN traffic as regular web browsing —
-potentially across multiple websites.
+so this low barrier should allow us to offer a ratio of tunnels to users that's orders of magnitude higher than existing solutions.
 
 For example,
 an existing Nginx `server {...}` block for `example.com` could host a Fān Qiáng tunnel under `https://example.com/<random-path>` with the following configuration:
