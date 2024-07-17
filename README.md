@@ -23,7 +23,32 @@ are not implemented in the PoC.
 
 ## Architecture
 
-TODO.
+The main architectural difference between Fān Qiáng and other VPN protocols is that the _VPN server_ is split into two components:
+The **tunnel**,
+responsible for obfuscating the traffic,
+and the **gateway**,
+responsible for routing the traffic to and from the Internet.
+The following diagram illustrates the relay of packets between a client (`192.168.0.1`) and an Internet host (`1.1.1.1`),
+via a tunnel (`https://tunnel.example`) and a gateway (`192.0.2.1`, `https://gateway.example`):
+
+```
+sequenceDiagram
+    participant Client
+    participant Tunnel
+    participant Gateway
+    participant Server as 1.1.1.1
+    
+    Client->>Tunnel: IP_PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
+    Tunnel->>Gateway: IP_PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
+    Gateway->>Server: IP_PACKET_1 (src: 192.0.2.1, dst: 1.1.1.1)
+    Server->>Gateway: IP_PACKET_2 (src: 1.1.1.1, dst: 192.0.2.1)
+    Gateway->>Tunnel: IP_PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
+    Tunnel->>Client: IP_PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
+```
+
+Although we're splitting the VPN server to circumvent censorship,
+this architecture is comparable to what VPN providers refer to as _double VPN_ --
+a feature that can improve privacy and mitigate traffic correlation attacks.
 
 ## How this is different from other HTTPS-based tunnels
 
@@ -37,16 +62,17 @@ In recent years,
 the technique has been studied academically under the name
 [HTTPT](https://www.usenix.org/conference/foci20/presentation/frolov).
 
-**What sets _Fān Qiáng_ apart is its resilience to enumeration**,
+**What sets Fān Qiáng apart is its resilience to enumeration**,
 by offering a trivial and universal way to turn any HTTPS website into a tunnel.
-Tunnels are simply reverse proxies,
+Here,
+tunnels are simply reverse proxies,
 so this low barrier should allow us to offer a far greater ratio of tunnels to users,
-which will in turn make it harder for censors to enumerate all of them,
+which will in turn make it harder for censors to enumerate them,
 whilst making it easy to camouflage VPN traffic as regular web browsing --
 potentially across multiple websites.
 
 For example,
-an existing Nginx `server {...}` block for `example.com` could host a tunnel under `https://example.com/<random-path>` with the following configuration:
+an existing Nginx `server {...}` block for `example.com` could host a Fān Qiáng tunnel under `https://example.com/<random-path>` with the following configuration:
 
 ```nginx
 location /<random-path> {
@@ -69,7 +95,7 @@ existing solutions also require the tunnel operator to set up and operate a purp
 ## Why create a new VPN protocol
 
 In principle,
-we should only be concerned with tunnelling traffic between VPN clients and servers.
+we're only interested in tunnelling traffic between VPN clients and servers.
 The underlying VPN protocol,
 whether it's OpenVPN® or WireGuard®,
 should be irrelevant.
@@ -80,22 +106,20 @@ the **current** implementations of OpenVPN® and WireGuard® will have proven ex
 Neither OpenVPN® nor WireGuard® servers natively support a client-side interfaces based on WebSockets,
 so we would've to implement and/or integrate a middleware like [wstunnel](https://github.com/erebe/wstunnel) to bridge the two.
 This would've added significant complexity and costs in production.
+
 If we were to do any kind of advanced integration with the VPN protocol,
 we would've only considered WireGuard®,
-given its simplicity.
-
-Much to our regret,
-WireGuard® wasn't a viable option.
-We would've faced the same [challenges that led Cloudflare to create their own WireGuard® implementation from scratch](https://blog.cloudflare.com/boringtun-userspace-wireguard-rust/).
-Unfortunately,
-[Cloudflare appear to have abandoned their implementation](https://github.com/cloudflare/boringtun/issues/407),
-and we couldn't take over the project due to lack of resources and expertise with Rust.
+given its simplicity,
+but much to our regret,
+it wasn't a viable option.
+We would've faced the same [challenges that led Cloudflare to create their own implementation from scratch](https://blog.cloudflare.com/boringtun-userspace-wireguard-rust/),
+which [appears to be abandoned now](https://github.com/cloudflare/boringtun/issues/407).
 [A fork has emerged recently](https://github.com/cloudflare/boringtun/issues/407#issuecomment-2198051893),
 but it's too soon to tell if it will be reliable enough for production.
 
-WireGuard®, the protocol, is definitely what we should be using eventually,
-but given the state of its implementations,
-the quickest and least risky route to production is to create our own protocol.
+In other words,
+we would've used the WireGuard® protocol had it not been for its current implementations,
+which would make it too risky and costly to deploy to production in our case.
 If we go through with this project,
 and it becomes successful,
 we'll probably replace our VPN protocol with WireGuard®.
