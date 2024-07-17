@@ -31,7 +31,7 @@ responsible for routing the traffic to and from the Internet.
 The following diagram illustrates the relay of packets between a client (`192.168.0.1`) and an Internet host (`1.1.1.1`),
 via a tunnel (`https://tunnel.example`) and a gateway (`192.0.2.1`, `https://gateway.example`):
 
-```
+```mermaid
 sequenceDiagram
     participant Client
     participant Tunnel
