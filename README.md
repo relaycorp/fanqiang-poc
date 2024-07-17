@@ -105,7 +105,8 @@ the **current** implementations of OpenVPN® and WireGuard® will have proven ex
 
 Neither OpenVPN® nor WireGuard® servers natively support a client-side interfaces based on WebSockets,
 so we would've to implement and/or integrate **another middleware** (e.g. [wstunnel](https://github.com/erebe/wstunnel)) to bridge the two.
-This would've added significant complexity and costs in production.
+This would've added significant complexity and costs in production,
+and reduced performance.
 
 If we were to do any kind of advanced integration with the VPN protocol,
 we would've only considered WireGuard®,
