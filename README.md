@@ -42,12 +42,12 @@ sequenceDiagram
     participant Gateway
     participant Server as 1.1.1.1
     
-    Client->>Tunnel: IP_PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
-    Tunnel->>Gateway: IP_PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
-    Gateway->>Server: IP_PACKET_1 (src: 192.0.2.1, dst: 1.1.1.1)
-    Server->>Gateway: IP_PACKET_2 (src: 1.1.1.1, dst: 192.0.2.1)
-    Gateway->>Tunnel: IP_PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
-    Tunnel->>Client: IP_PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
+    Client->>Tunnel: PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
+    Tunnel->>Gateway: PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
+    Gateway->>Server: PACKET_1 (src: 192.0.2.1, dst: 1.1.1.1)
+    Server->>Gateway: PACKET_2 (src: 1.1.1.1, dst: 192.0.2.1)
+    Gateway->>Tunnel: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
+    Tunnel->>Client: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
 ```
 
 ## How this is different from other HTTPS-based tunnels
@@ -76,7 +76,7 @@ an existing Nginx `server {...}` block for `example.com` could host a Fān Qián
 
 ```nginx
 location /<random-path> {
-    # For performance reasons, use a gateway close to the tunnel.
+    # To minimise latency, use a gateway close to the tunnel.
     proxy_pass https://london.gb.gateways.relaycorp.tech/tunnel;
     
     # Enable WebSockets
@@ -88,7 +88,7 @@ location /<random-path> {
 }
 ```
 
-This is all that's needed to set up a tunnel.
+**This is all that's needed to set up a tunnel**.
 By contrast,
 existing solutions also require the tunnel operator to set up and operate a purpose-built WebSocket server.
 
@@ -104,7 +104,7 @@ however,
 the **current** implementations of OpenVPN® and WireGuard® will have proven exceptionally problematic in production.
 
 Neither OpenVPN® nor WireGuard® servers natively support a client-side interfaces based on WebSockets,
-so we would've to implement and/or integrate a middleware like [wstunnel](https://github.com/erebe/wstunnel) to bridge the two.
+so we would've to implement and/or integrate **another middleware** (e.g. [wstunnel](https://github.com/erebe/wstunnel)) to bridge the two.
 This would've added significant complexity and costs in production.
 
 If we were to do any kind of advanced integration with the VPN protocol,
