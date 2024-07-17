@@ -28,6 +28,10 @@ The **tunnel**,
 responsible for obfuscating the traffic,
 and the **gateway**,
 responsible for routing the traffic to and from the Internet.
+We do this to circumvent censorship,
+but this architecture is comparable to what VPN providers refer to as _double VPN_ —
+a feature that can improve privacy and mitigate traffic correlation attacks.
+
 The following diagram illustrates the relay of packets between a client (`192.168.0.1`) and an Internet host (`1.1.1.1`),
 via a tunnel (`https://tunnel.example`) and a gateway (`192.0.2.1`, `https://gateway.example`):
 
@@ -45,10 +49,6 @@ sequenceDiagram
     Gateway->>Tunnel: IP_PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
     Tunnel->>Client: IP_PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
 ```
-
-Although we're splitting the VPN server to circumvent censorship,
-this architecture is comparable to what VPN providers refer to as _double VPN_ --
-a feature that can improve privacy and mitigate traffic correlation attacks.
 
 ## How this is different from other HTTPS-based tunnels
 
@@ -68,7 +68,7 @@ Here,
 tunnels are simply reverse proxies,
 so this low barrier should allow us to offer a far greater ratio of tunnels to users,
 which will in turn make it harder for censors to enumerate them,
-whilst making it easy to camouflage VPN traffic as regular web browsing --
+whilst making it easy to camouflage VPN traffic as regular web browsing —
 potentially across multiple websites.
 
 For example,
