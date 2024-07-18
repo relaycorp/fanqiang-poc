@@ -1,12 +1,10 @@
 # Fān Qiáng ("翻墙") Proof of Concept
 
 This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
-a VPN protocol that's resilient to [active probing](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing) and
+a VPN tunnelling protocol resilient to [active probing](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing) and
 [enumeration](https://github.com/scriptzteam/Tor-Bridges-Collector).
 This PoC turns **any HTTPS website** into a tunnel,
 thus making user traffic pass off as regular web browsing.
-Future versions of the protocol may support additional tunnelling methods,
-such as videoconferencing software like Zoom.
 
 ## Demo
 
@@ -92,13 +90,13 @@ existing solutions also require the tunnel operator to set up and operate a purp
 ## Why create a new VPN protocol
 
 In principle,
-we're only interested in tunnelling traffic between VPN clients and servers.
+we're only interested in the tunnelling aspect.
 The underlying VPN protocol,
 whether it's OpenVPN® or WireGuard®,
 should be irrelevant.
 In practice,
 however,
-the **current** implementations of OpenVPN® and WireGuard® will have proven exceptionally problematic in production.
+the **current** implementations of OpenVPN® and WireGuard® would prove exceptionally problematic in production.
 
 Neither OpenVPN® nor WireGuard® servers natively support a client-side interfaces based on WebSockets,
 so we would've to implement and/or integrate **another middleware** (e.g. [wstunnel](https://github.com/erebe/wstunnel)) to bridge the two.
@@ -110,10 +108,11 @@ we would've only considered WireGuard®,
 given its simplicity,
 but much to our regret,
 it wasn't a viable option.
-We would've faced the same [challenges that led Cloudflare to create their own implementation from scratch](https://blog.cloudflare.com/boringtun-userspace-wireguard-rust/),
-which [appears to be abandoned now](https://github.com/cloudflare/boringtun/issues/407).
-[A fork has emerged recently](https://github.com/cloudflare/boringtun/issues/407#issuecomment-2198051893),
-but it's too soon to tell if it will be reliable enough for production.
+We would've faced the same [challenges that led Cloudflare to create their own implementation from scratch](https://blog.cloudflare.com/boringtun-userspace-wireguard-rust/).
+Unfortunately,
+[Cloudflare appears to have abandoned their implementation](https://github.com/cloudflare/boringtun/issues/407),
+and whilst [a fork has emerged recently](https://github.com/cloudflare/boringtun/issues/407#issuecomment-2198051893),
+it's too soon to tell if it will be reliable enough for production.
 
 In other words,
 we would've used the WireGuard® protocol had it not been for its current implementations,
@@ -121,3 +120,24 @@ which would make it too risky and costly to deploy to production in our case.
 If this project takes off,
 we'll probably contribute to WireGuard®,
 so we can replace our VPN protocol and focus on the tunnelling.
+
+## Alternative tunnelling methods
+
+Future versions of the protocol may support additional tunnelling methods.
+By baking tunnelling into the protocol,
+the gateway can automatically support any type of tunnelling method that the client uses,
+whilst preserving E2E encryption between the client and the gateway.
+Alternative methods could include:
+
+- Video calls, preferably using an E2E encrypted platform like Zoom.
+  The client would use a _virtual webcam_ (see [pyvirtualcam](https://pypi.org/project/pyvirtualcam/)) to send packets, and a video decoder for the incoming packets.
+  The tunnel would decode the video stream from the client and send the packets to the gateway,
+  and encode the packets from the gateway and send them to the client.
+- Email (SMTP and IMAP).
+  Once configured with the credentials,
+  the client and the tunnel would exchange packets via email with no user intervention.
+  Packets would be batched for efficiency.
+
+Naturally,
+the methods above would be used sparingly to avoid detection and because of their lower throughput.
+It should also be considered whether the method would breach the terms of the underlying service.
