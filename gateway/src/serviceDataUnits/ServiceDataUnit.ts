@@ -1,10 +1,13 @@
 import { ServiceDataValidation } from './ServiceDataValidation.js';
 import { IpChecksumContext } from './checksums/IpChecksumContext.js';
+import { makePseudoHeader } from './checksums/pseudoHeader.js';
+import { calculateChecksum } from '../protocolDataUnits/checksum.js';
 
 export abstract class ServiceDataUnit {
   constructor(public buffer: Buffer) {}
 
   protected abstract protocolName: string;
+  protected abstract protocolNumber: number;
 
   protected abstract minSize: number;
 
@@ -39,7 +42,17 @@ export abstract class ServiceDataUnit {
   /**
    * Recalculate the checksum of the SDU and updates it in place.
    */
-  public abstract recalculateChecksum(context: IpChecksumContext): number;
+  public recalculateChecksum(context: IpChecksumContext): number {
+    const pseudoHeader = makePseudoHeader(
+      this.buffer.length,
+      this.protocolNumber,
+      context,
+    );
+    this.setChecksum(0);
+    const checksum = calculateChecksum(pseudoHeader, this.buffer);
+    this.setChecksum(checksum);
+    return checksum;
+  }
 
   /**
    * Check if the checksum of the packet is valid.

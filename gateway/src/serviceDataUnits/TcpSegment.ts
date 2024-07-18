@@ -1,27 +1,20 @@
 import { ServiceDataUnit } from './ServiceDataUnit.js';
-import { calculateChecksum } from '../ip/checksum.js';
-import { IpChecksumContext } from './checksums/IpChecksumContext.js';
 import { TransportProtocol } from './TransportProtocol.js';
-import { makePseudoHeader } from './checksums/pseudoHeader.js';
+
+enum HeaderFieldIndex {
+  SOURCE_PORT = 0,
+  DESTINATION_PORT = 2,
+  CHECKSUM = 16,
+}
 
 export class TcpSegment extends ServiceDataUnit {
   protected override readonly protocolName = 'TCP';
+  protected override readonly protocolNumber = TransportProtocol.TCP;
 
   protected override readonly minSize = 20;
 
-  protected override readonly sourcePortOffset = 0;
-  protected override readonly destinationPortOffset = 2;
-  protected override readonly checksumOffset = 16;
-
-  override recalculateChecksum(context: IpChecksumContext): number {
-    const pseudoHeader = makePseudoHeader(
-      this.buffer.length,
-      TransportProtocol.TCP,
-      context,
-    );
-    this.setChecksum(0);
-    const checksum = calculateChecksum(pseudoHeader, this.buffer);
-    this.setChecksum(checksum);
-    return checksum;
-  }
+  protected override readonly sourcePortOffset = HeaderFieldIndex.SOURCE_PORT;
+  protected override readonly destinationPortOffset =
+    HeaderFieldIndex.DESTINATION_PORT;
+  protected override readonly checksumOffset = HeaderFieldIndex.CHECKSUM;
 }

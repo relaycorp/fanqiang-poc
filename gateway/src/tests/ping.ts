@@ -1,10 +1,10 @@
 import { consume, map, pipeline, tap } from 'streaming-iterables';
 
-import { calculateChecksum } from '../ip/checksum.js';
-import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
-import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
+import { calculateChecksum } from '../protocolDataUnits/checksum.js';
+import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
+import { Ipv4Packet } from '../protocolDataUnits/ipv4/Ipv4Packet.js';
 import { connectToGateway } from './utils/gatewayClient.js';
-import { Ipv4OrIpv6Packet } from '../ip/Ipv4OrIpv6Packet.js';
+import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
 
 const PING_INTERVAL_SECONDS = 3;
 
@@ -20,7 +20,7 @@ ICMP_PACKET.writeUInt16BE(calculateChecksum(ICMP_PACKET), 2);
 async function* producePingPackets(
   sourceAddress: Ipv4Address,
   destinationAddress: Ipv4Address,
-): AsyncGenerator<Ipv4OrIpv6Packet, void> {
+): AsyncGenerator<Ipv4Or6Packet, void> {
   let timeoutId: NodeJS.Timeout | null = null;
   try {
     while (true) {

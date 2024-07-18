@@ -1,7 +1,7 @@
 import { TunnelConnection } from './TunnelConnection.js';
-import { BaseIpAddress } from '../ip/BaseIpAddress.js';
+import { IpAddress } from '../protocolDataUnits/IpAddress.js';
 
-export interface PrivateEndpoint<Address extends BaseIpAddress<any>> {
+export interface PrivateEndpoint<Address extends IpAddress<any>> {
   readonly address: Address;
   readonly tunnelConnection: TunnelConnection;
 }
@@ -9,7 +9,7 @@ export interface PrivateEndpoint<Address extends BaseIpAddress<any>> {
 /**
  * Represents a connection between two endpoints.
  */
-export interface Connection<Address extends BaseIpAddress<any>> {
+export interface Connection<Address extends IpAddress<any>> {
   /**
    * The endpoint behind the tunnel.
    */
@@ -28,7 +28,7 @@ export interface Connection<Address extends BaseIpAddress<any>> {
 /**
  * A connection whose Transport Layer protocol is supported by the NAT.
  */
-export interface L4Connection<Address extends BaseIpAddress<any>>
+export interface L4Connection<Address extends IpAddress<any>>
   extends Connection<Address> {
   readonly privateEndpointPort: number;
   readonly publicEndpointPort: number;

@@ -1,6 +1,6 @@
 import { TransportProtocol } from '../TransportProtocol.js';
 import { IpChecksumContext } from './IpChecksumContext.js';
-import { Ipv6Address } from '../../ip/ipv6/Ipv6Address.js';
+import { Ipv6Address } from '../../protocolDataUnits/ipv6/Ipv6Address.js';
 
 export function makePseudoHeader(
   sduLength: number,

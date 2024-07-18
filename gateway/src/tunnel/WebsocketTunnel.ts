@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 
 import type { TunnelConnection } from '../nat/TunnelConnection.js';
-import { Ipv4OrIpv6Packet } from '../ip/Ipv4OrIpv6Packet.js';
+import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
 
 export class WebsocketTunnel implements TunnelConnection {
   public readonly id: string;
@@ -15,7 +15,7 @@ export class WebsocketTunnel implements TunnelConnection {
     this.wsClient = wsClient;
   }
 
-  async sendPacket(packet: Ipv4OrIpv6Packet) {
+  async sendPacket(packet: Ipv4Or6Packet) {
     return new Promise<void>((resolve, reject) => {
       this.wsClient.send(packet.buffer, (err) => {
         if (err) {

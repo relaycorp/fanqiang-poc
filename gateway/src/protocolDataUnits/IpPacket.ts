@@ -1,11 +1,11 @@
 import { ServiceDataUnit } from '../serviceDataUnits/ServiceDataUnit.js';
-import { Ipv4OrIpv6Address } from './Ipv4OrIpv6Address.js';
+import { Ipv4Or6Address } from './Ipv4Or6Address.js';
 import { BaseIpChecksumContext } from '../serviceDataUnits/checksums/IpChecksumContext.js';
 import { initServiceData } from '../serviceDataUnits/init.js';
 import { IpPacketValidation } from './IpPacketValidation.js';
 import { ForwardingSide } from '../nat/ForwardingSide.js';
 
-export abstract class IpPacket<Address extends Ipv4OrIpv6Address> {
+export abstract class IpPacket<Address extends Ipv4Or6Address> {
   constructor(public buffer: Buffer) {}
 
   public abstract getSourceAddress(): Address;

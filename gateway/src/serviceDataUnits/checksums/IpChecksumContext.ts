@@ -1,8 +1,8 @@
-import { Ipv4Address } from '../../ip/ipv4/Ipv4Address.js';
-import { Ipv6Address } from '../../ip/ipv6/Ipv6Address.js';
-import { BaseIpAddress } from '../../ip/BaseIpAddress.js';
+import { Ipv4Address } from '../../protocolDataUnits/ipv4/Ipv4Address.js';
+import { Ipv6Address } from '../../protocolDataUnits/ipv6/Ipv6Address.js';
+import { IpAddress } from '../../protocolDataUnits/IpAddress.js';
 
-export interface BaseIpChecksumContext<AddressType extends BaseIpAddress<any>> {
+export interface BaseIpChecksumContext<AddressType extends IpAddress<any>> {
   readonly sourceAddress: AddressType;
   readonly destinationAddress: AddressType;
 }

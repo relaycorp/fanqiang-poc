@@ -6,7 +6,7 @@
     "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.json",
     "addons:rebuild": "node-gyp rebuild",
-    "start": "tsx src/server.ts",
+    "start": "tsx src/gateway.ts",
     "ping": "tsx src/tests/ping.ts 1.1.1.1",
     "clean": "del-cli build",
     "fix": "prettier --write ."

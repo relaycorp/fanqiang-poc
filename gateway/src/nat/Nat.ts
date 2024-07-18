@@ -1,21 +1,21 @@
-import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
 import { ServiceDataUnit } from '../serviceDataUnits/ServiceDataUnit.js';
 import { ForwardingSide } from './ForwardingSide.js';
-import { Ipv6Address } from '../ip/ipv6/Ipv6Address.js';
-import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
+import { Ipv6Address } from '../protocolDataUnits/ipv6/Ipv6Address.js';
+import { Ipv4Packet } from '../protocolDataUnits/ipv4/Ipv4Packet.js';
 import type { TunnelConnection } from './TunnelConnection.js';
 import { Result } from '../utils/result.js';
-import { Ipv4OrIpv6Packet } from '../ip/Ipv4OrIpv6Packet.js';
+import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
 import { ConnectionTracker } from './ConnectionTracker.js';
 
-export type PacketForwardResult = Result<Ipv4OrIpv6Packet, Error>;
+export type PacketForwardResult = Result<Ipv4Or6Packet, Error>;
 
 type PacketProcessor = (
-  packets: AsyncIterable<Ipv4OrIpv6Packet>,
+  packets: AsyncIterable<Ipv4Or6Packet>,
 ) => AsyncIterable<PacketForwardResult>;
 
 /**
- * A network address and port translation (NAPT) or one-to-many NAT.
+ * A ip address and port translation (NAPT) or one-to-many NAT.
  *
  * Translation method: Port-restricted cone for compatibility with P2P apps,
  * although it's less secure than symmetric.
@@ -28,7 +28,7 @@ export class Nat {
     protected ipv6Address: Ipv6Address,
   ) {}
 
-  protected translatePacketFromTunnel(packet: Ipv4OrIpv6Packet): void {
+  protected translatePacketFromTunnel(packet: Ipv4Or6Packet): void {
     const serviceData = packet.getServiceData();
     if (serviceData instanceof ServiceDataUnit) {
       throw new Error('SDUs not implemented.');
@@ -43,7 +43,7 @@ export class Nat {
   ): PacketProcessor {
     const nat = this;
     return async function* (
-      packets: AsyncIterable<Ipv4OrIpv6Packet>,
+      packets: AsyncIterable<Ipv4Or6Packet>,
     ): AsyncIterable<PacketForwardResult> {
       for await (const packet of packets) {
         const destinationAddress = packet.getDestinationAddress();
@@ -73,11 +73,11 @@ export class Nat {
   }
 
   public forwardPacketsFromInternet(): (
-    packets: AsyncIterable<Ipv4OrIpv6Packet>,
+    packets: AsyncIterable<Ipv4Or6Packet>,
   ) => Promise<void> {
     const nat = this;
     return async function (
-      packets: AsyncIterable<Ipv4OrIpv6Packet>,
+      packets: AsyncIterable<Ipv4Or6Packet>,
     ): Promise<void> {
       for await (const packet of packets) {
         const sourceAddress = packet.getSourceAddress();

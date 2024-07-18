@@ -1,6 +1,6 @@
-import { BaseIpAddress } from '../BaseIpAddress.js';
+import { IpAddress } from '../IpAddress.js';
 
-export class Ipv4Address extends BaseIpAddress<Ipv4Address> {
+export class Ipv4Address extends IpAddress<Ipv4Address> {
   public static readonly OCTETS_LENGTH = 4;
 
   constructor(buffer: Buffer) {

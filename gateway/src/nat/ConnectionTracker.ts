@@ -1,12 +1,12 @@
 import { hrtime } from 'node:process';
 
-import { Ipv4OrIpv6Packet } from '../ip/Ipv4OrIpv6Packet.js';
-import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
+import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
 import { Connection, PrivateEndpoint } from './connection.js';
-import { Ipv6Address } from '../ip/ipv6/Ipv6Address.js';
+import { Ipv6Address } from '../protocolDataUnits/ipv6/Ipv6Address.js';
 import { TunnelConnection } from './TunnelConnection.js';
-import { BaseIpAddress } from '../ip/BaseIpAddress.js';
-import { Ipv4OrIpv6Address } from '../ip/Ipv4OrIpv6Address.js';
+import { IpAddress } from '../protocolDataUnits/IpAddress.js';
+import { Ipv4Or6Address } from '../protocolDataUnits/Ipv4Or6Address.js';
 
 /**
  * Maximum number of connections that can be tracked.
@@ -20,7 +20,7 @@ export class ConnectionTracker {
   protected l3Ipv4Connections: Connection<Ipv4Address>[] = [];
   protected l3Ipv6Connections: Connection<Ipv6Address>[] = [];
 
-  protected getL3Connection<Address extends BaseIpAddress<any>>(
+  protected getL3Connection<Address extends IpAddress<any>>(
     publicEndpointAddress: Address,
     transportProtocol: number,
   ): Connection<Address> | null {
@@ -65,7 +65,7 @@ export class ConnectionTracker {
   }
 
   public trackL3Connection(
-    internetBoundPacket: Ipv4OrIpv6Packet,
+    internetBoundPacket: Ipv4Or6Packet,
     tunnelConnection: TunnelConnection,
   ): void {
     const sourceAddress = internetBoundPacket.getSourceAddress();
@@ -105,7 +105,7 @@ export class ConnectionTracker {
   }
 
   public getL3PrivateEndpoint(
-    publicEndpointAddress: Ipv4OrIpv6Address,
+    publicEndpointAddress: Ipv4Or6Address,
     transportProtocol: number,
   ): PrivateEndpoint<typeof publicEndpointAddress> | null {
     const connection = this.getL3Connection(

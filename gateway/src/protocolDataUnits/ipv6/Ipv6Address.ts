@@ -1,6 +1,6 @@
-import { BaseIpAddress } from '../BaseIpAddress.js';
+import { IpAddress } from '../IpAddress.js';
 
-export class Ipv6Address extends BaseIpAddress<Ipv6Address> {
+export class Ipv6Address extends IpAddress<Ipv6Address> {
   public static readonly OCTETS_LENGTH = 16; // IPv6 addresses are 128 bits (16 bytes)
   public static readonly HEXTETS_LENGTH = Ipv6Address.OCTETS_LENGTH / 2;
 

@@ -3,12 +3,12 @@ import { filter, map, pipeline } from 'streaming-iterables';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
 
 import { TunInterface } from './TunInterface.js';
-import { Ipv4Address } from './ip/ipv4/Ipv4Address.js';
-import { initPacket } from './ip/packets.js';
-import { Ipv4OrIpv6Packet } from './ip/Ipv4OrIpv6Packet.js';
-import { IpPacketValidation } from './ip/IpPacketValidation.js';
-import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
-import { Ipv6Address } from './ip/ipv6/Ipv6Address.js';
+import { Ipv4Address } from './protocolDataUnits/ipv4/Ipv4Address.js';
+import { initPacket } from './protocolDataUnits/packets.js';
+import { Ipv4Or6Packet } from './protocolDataUnits/Ipv4Or6Packet.js';
+import { IpPacketValidation } from './protocolDataUnits/IpPacketValidation.js';
+import { Ipv6Packet } from './protocolDataUnits/ipv6/Ipv6Packet.js';
+import { Ipv6Address } from './protocolDataUnits/ipv6/Ipv6Address.js';
 import { Nat } from './nat/Nat.js';
 import type { TunnelConnection } from './nat/TunnelConnection.js';
 import { WebsocketTunnel } from './tunnel/WebsocketTunnel.js';
@@ -37,19 +37,19 @@ async function shutDown() {
 
 process.on('SIGINT', shutDown);
 
-function isPacket(packet: Ipv4OrIpv6Packet | null): packet is Ipv4OrIpv6Packet {
+function isPacket(packet: Ipv4Or6Packet | null): packet is Ipv4Or6Packet {
   return packet !== null;
 }
 
 function forwardPacketsFromTunnel(
   wsStream: Duplex,
   tunnelConnection: TunnelConnection,
-  tunWriteStream: (packets: AsyncIterable<Ipv4OrIpv6Packet>) => Promise<void>,
+  tunWriteStream: (packets: AsyncIterable<Ipv4Or6Packet>) => Promise<void>,
 ) {
   return pipeline(
     () => wsStream,
     map((packetBuffer) => {
-      let packet: Ipv4OrIpv6Packet;
+      let packet: Ipv4Or6Packet;
       try {
         packet = initPacket(packetBuffer);
       } catch (err: any) {

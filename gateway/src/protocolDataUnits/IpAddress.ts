@@ -1,13 +1,13 @@
 import is_ip_private from 'private-ip';
 
-export abstract class BaseIpAddress<T extends BaseIpAddress<T>> {
+export abstract class IpAddress<T extends IpAddress<T>> {
   protected constructor(public buffer: Buffer) {}
 
   public abstract toString(): string;
 
   public abstract clone(): T;
 
-  public equals(other: BaseIpAddress<any>): boolean {
+  public equals(other: IpAddress<any>): boolean {
     return this.buffer.equals(other.buffer);
   }
 

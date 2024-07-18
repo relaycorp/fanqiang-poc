@@ -2,15 +2,15 @@ import { argv } from 'node:process';
 import { map, pipeline, writeToStream } from 'streaming-iterables';
 import { createWebSocketStream } from 'ws';
 
-import { Ipv4Address } from '../../ip/ipv4/Ipv4Address.js';
-import { Ipv4OrIpv6Packet } from '../../ip/Ipv4OrIpv6Packet.js';
-import { initPacket } from '../../ip/packets.js';
+import { Ipv4Address } from '../../protocolDataUnits/ipv4/Ipv4Address.js';
+import { Ipv4Or6Packet } from '../../protocolDataUnits/Ipv4Or6Packet.js';
+import { initPacket } from '../../protocolDataUnits/packets.js';
 import { connectToWsServer } from './ws.js';
 
 const DEFAULT_SOURCE_ADDRESS = '127.0.1.1';
 const GATEWAY_URL = 'ws://localhost:8080';
 
-type PacketSource = AsyncIterable<Ipv4OrIpv6Packet>;
+type PacketSource = AsyncIterable<Ipv4Or6Packet>;
 type PacketSink = (packets: PacketSource) => Promise<void>;
 type Handler = (
   incomingPackets: PacketSource,
