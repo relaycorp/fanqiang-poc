@@ -17,7 +17,7 @@ interface Connection<Endpoint> {
 
   readonly transportProtocol: number;
 
-  readonly lastUseTimestampNs: bigint;
+  lastUseTimestampNs: bigint;
 
   readonly tunnelConnection: TunnelConnection;
 }

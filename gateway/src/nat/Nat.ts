@@ -30,7 +30,7 @@ export class Nat {
       throw new Error('SDUs not implemented.');
     }
     const sourceAddress =
-        packet instanceof Ipv4Packet ? this.ipv4Address : this.ipv6Address;
+      packet instanceof Ipv4Packet ? this.ipv4Address : this.ipv6Address;
     packet.prepareForForwarding(ForwardingSide.SOURCE, sourceAddress);
   }
 
