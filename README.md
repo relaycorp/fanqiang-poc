@@ -126,7 +126,7 @@ so we can replace our VPN protocol and focus on the tunnelling.
 Future versions of the protocol may support additional tunnelling methods.
 By baking tunnelling into the protocol,
 the gateway can automatically support any type of tunnelling method that the client uses,
-whilst preserving E2E encryption between the client and the gateway.
+whilst preserving the E2E encryption between the client and the gateway.
 Alternative methods could include:
 
 - Video calls, preferably using an E2E encrypted platform like Zoom.
