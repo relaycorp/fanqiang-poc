@@ -24,6 +24,16 @@ export class Nat {
     protected ipv6Address: Ipv6Address,
   ) {}
 
+  protected translatePacketFromTunnel(packet: Ipv4OrIpv6Packet): void {
+    const serviceData = packet.getServiceData();
+    if (serviceData instanceof ServiceDataUnit) {
+      throw new Error('SDUs not implemented.');
+    }
+    const sourceAddress =
+        packet instanceof Ipv4Packet ? this.ipv4Address : this.ipv6Address;
+    packet.prepareForForwarding(ForwardingSide.SOURCE, sourceAddress);
+  }
+
   public forwardPacketsFromTunnel(
     tunnelConnection: TunnelConnection,
   ): (
@@ -54,19 +64,9 @@ export class Nat {
           continue;
         }
 
-        nat.translatePacketFromPrivateToPublic(packet);
+        nat.translatePacketFromTunnel(packet);
         yield { didSucceed: true, result: packet } as PacketForwardResult;
       }
     };
-  }
-
-  public translatePacketFromPrivateToPublic(packet: Ipv4OrIpv6Packet): void {
-    const serviceData = packet.getServiceData();
-    if (serviceData instanceof ServiceDataUnit) {
-      throw new Error('SDUs not implemented.');
-    }
-    const sourceAddress =
-      packet instanceof Ipv4Packet ? this.ipv4Address : this.ipv6Address;
-    packet.prepareForForwarding(ForwardingSide.SOURCE, sourceAddress);
   }
 }

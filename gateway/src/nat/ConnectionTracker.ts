@@ -12,6 +12,7 @@ import { BaseIpAddress } from '../ip/BaseIpAddress.js';
  */
 const MAX_CONNECTIONS = 2 ** 18; // 262,144; the default in Netfilter
 
+// TODO: Adopt the NetFilter timeouts: `sysctl -a 2>/dev/null | grep -E 'nf_conntrack_.+timeout'`
 export class ConnectionTracker {
   protected connectionCount = 0;
 
