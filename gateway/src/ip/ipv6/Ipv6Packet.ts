@@ -20,7 +20,7 @@ export class Ipv6Packet extends IpPacket<Ipv6Address> {
   override getSourceAddress(): Ipv6Address {
     const addressBuffer = this.buffer.subarray(
       HeaderFieldIndex.SOURCE_ADDRESS,
-      HeaderFieldIndex.SOURCE_ADDRESS + Ipv6Address.HEXTETS_LENGTH,
+      HeaderFieldIndex.SOURCE_ADDRESS + Ipv6Address.OCTETS_LENGTH,
     );
     return new Ipv6Address(addressBuffer);
   }
@@ -32,7 +32,7 @@ export class Ipv6Packet extends IpPacket<Ipv6Address> {
   override getDestinationAddress(): Ipv6Address {
     const addressBuffer = this.buffer.subarray(
       HeaderFieldIndex.DESTINATION_ADDRESS,
-      HeaderFieldIndex.DESTINATION_ADDRESS + Ipv6Address.HEXTETS_LENGTH,
+      HeaderFieldIndex.DESTINATION_ADDRESS + Ipv6Address.OCTETS_LENGTH,
     );
     return new Ipv6Address(addressBuffer);
   }
