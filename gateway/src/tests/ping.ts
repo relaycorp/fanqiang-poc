@@ -1,10 +1,10 @@
 import { consume, map, pipeline, tap } from 'streaming-iterables';
 
-import { calculateChecksum } from '../../ip/checksum.js';
-import { Ipv4Address } from '../../ip/ipv4/Ipv4Address.js';
-import { Ipv4Packet } from '../../ip/ipv4/Ipv4Packet.js';
-import { connectToGateway } from '../client.js';
-import { Ipv4OrIpv6Packet } from '../../ip/Ipv4OrIpv6Packet.js';
+import { calculateChecksum } from '../ip/checksum.js';
+import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
+import { connectToGateway } from './utils/gatewayClient.js';
+import { Ipv4OrIpv6Packet } from '../ip/Ipv4OrIpv6Packet.js';
 
 const PING_INTERVAL_SECONDS = 3;
 
