@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "addons:rebuild": "node-gyp rebuild",
     "start": "tsx src/server.ts",
-    "ping": "tsx src/tests/ping.ts",
+    "ping": "tsx src/tests/ping/bin.ts 1.1.1.1",
     "clean": "del-cli build",
     "fix": "prettier --write ."
   },

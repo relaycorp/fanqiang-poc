@@ -9,8 +9,11 @@ const MIN_IPV4_PACKET_LENGTH = 20;
 const MIN_IHL = 5;
 
 enum HeaderFieldIndex {
-  IHL = 0,
+  VERSION_AND_IHL = 0,
+  DSCP_AND_ECN = 1,
   TOTAL_LENGTH = 2,
+  IDENTIFICATION = 4,
+  FLAGS_AND_FRAGMENT_OFFSET = 6,
   TTL = 8,
   PROTOCOL = 9,
   CHECKSUM = 10,
@@ -19,7 +22,7 @@ enum HeaderFieldIndex {
 }
 
 function getIhl(packet: Buffer) {
-  return packet[HeaderFieldIndex.IHL] & 0x0f;
+  return packet[HeaderFieldIndex.VERSION_AND_IHL] & 0x0f;
 }
 
 /**
@@ -28,6 +31,30 @@ function getIhl(packet: Buffer) {
  * These instances are mutable, so avoid passing them around.
  */
 export class Ipv4Packet extends IpPacket<Ipv4Address> {
+  public static create(
+    sourceAddress: Ipv4Address,
+    destinationAddress: Ipv4Address,
+    protocol: number,
+    payload: Buffer,
+  ): Ipv4Packet {
+    const buffer = Buffer.alloc(MIN_IPV4_PACKET_LENGTH + payload.length);
+    buffer[HeaderFieldIndex.VERSION_AND_IHL] = 0x45; // Version 4, IHL 5
+    buffer[HeaderFieldIndex.DSCP_AND_ECN] = 0x00;
+    buffer.writeUInt16BE(buffer.length, HeaderFieldIndex.TOTAL_LENGTH);
+    buffer.writeUInt16BE(0x1234, HeaderFieldIndex.IDENTIFICATION);
+    buffer.writeUInt16BE(0x4000, HeaderFieldIndex.FLAGS_AND_FRAGMENT_OFFSET);
+    buffer[HeaderFieldIndex.TTL] = 64;
+    buffer[HeaderFieldIndex.PROTOCOL] = protocol;
+    payload.copy(buffer, MIN_IPV4_PACKET_LENGTH);
+
+    const packet = new Ipv4Packet(buffer);
+    packet.setSourceAddress(sourceAddress);
+    packet.setDestinationAddress(destinationAddress);
+    packet.recalculateChecksum();
+
+    return packet;
+  }
+
   constructor(buffer: Buffer) {
     super(buffer);
 
