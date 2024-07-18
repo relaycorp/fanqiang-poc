@@ -1,10 +1,10 @@
-import { consume, map, pipeline, tap } from 'streaming-iterables';
+import { hrtime } from 'node:process';
+import { setTimeout } from 'node:timers/promises';
 
 import { calculateChecksum } from '../protocolDataUnits/checksum.js';
 import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
 import { Ipv4Packet } from '../protocolDataUnits/ipv4/Ipv4Packet.js';
-import { connectToGateway } from './utils/gatewayClient.js';
-import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
+import { runTest } from './utils/runner.js';
 
 const PING_INTERVAL_SECONDS = 3;
 
@@ -17,53 +17,27 @@ const ICMP_PACKET = Buffer.from([
 ]);
 ICMP_PACKET.writeUInt16BE(calculateChecksum(ICMP_PACKET), 2);
 
-async function* producePingPackets(
-  sourceAddress: Ipv4Address,
-  destinationAddress: Ipv4Address,
-): AsyncGenerator<Ipv4Or6Packet, void> {
-  let timeoutId: NodeJS.Timeout | null = null;
-  try {
-    while (true) {
-      yield Ipv4Packet.create(
-        sourceAddress,
-        destinationAddress,
-        1, // ICMP
-        ICMP_PACKET,
-      );
-      await new Promise<void>((resolve) => {
-        timeoutId = setTimeout(resolve, PING_INTERVAL_SECONDS * 1_000);
-      });
-    }
-  } finally {
-    // noinspection PointlessBooleanExpressionJS
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-    }
-  }
-}
-
-await connectToGateway(
-  async (
-    incomingPackets,
-    outgoingPacketsSink,
+function makePing(sourceAddress: Ipv4Address, destinationAddress: Ipv4Address) {
+  return Ipv4Packet.create(
     sourceAddress,
     destinationAddress,
-  ) => {
-    const pingPackets = producePingPackets(sourceAddress, destinationAddress);
-    const sendPingPackets = pipeline(
-      () => pingPackets,
-      tap((packet) => console.log(`↑ ${packet}`)),
-      outgoingPacketsSink,
-    );
-    const processPongPackets = pipeline(
-      () => incomingPackets,
-      map((packet) => console.log(`↓ ${packet}`)),
-      consume,
-    );
-    try {
-      await Promise.all([sendPingPackets, processPongPackets]);
-    } finally {
-      await pingPackets.return();
-    }
-  },
-);
+    1, // ICMP
+    ICMP_PACKET,
+  );
+}
+
+await runTest(async (sourceAddress, destinationAddress, gatewayClient) => {
+  while (true) {
+    const ping = makePing(sourceAddress, destinationAddress);
+    const startTime = hrtime.bigint();
+    await gatewayClient.sendPacket(ping);
+    console.log(`↑ ${ping}`);
+
+    const pong = await gatewayClient.readNextPacket();
+    const endTime = hrtime.bigint();
+    const elapsedMs = Number(endTime - startTime) / 1_000_000;
+    console.log(`↓ ${pong} (${elapsedMs.toFixed(2)}ms)`);
+
+    await setTimeout(PING_INTERVAL_SECONDS * 1_000);
+  }
+});
