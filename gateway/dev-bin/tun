@@ -20,7 +20,7 @@ CONFIGURED_INTERNET_INTERFACE_NAME_FILE="${CONFIG_DIR}/internet-interface-name"
 
 function get_default_interface() {
     local internet_route
-    internet_route="$(ip route show default)"
+    internet_route="$(ip route show default | head --lines 1)"
 
     if [ -z "${internet_route}" ]; then
         echo "Error: No internet route found" >&2
