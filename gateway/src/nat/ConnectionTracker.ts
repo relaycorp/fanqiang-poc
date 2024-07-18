@@ -37,54 +37,65 @@ export class ConnectionTracker {
     return matchingConnections ?? null;
   }
 
-  public trackL3Connection(
-    internetBoundPacket: Ipv4OrIpv6Packet,
+  private createL3Connection(
+    sourceAddress: Ipv6Address | Ipv4Address,
+    destinationAddress: Ipv6Address | Ipv4Address,
+    transportProtocol: number,
     tunnelConnection: TunnelConnection,
+  ) {
+    if (MAX_CONNECTIONS <= this.connectionCount) {
+      throw new Error('Too many connections open');
+    }
+    const connection: L3Connection<typeof sourceAddress> = {
+      privateEndpoint: sourceAddress.clone(),
+      publicEndpoint: destinationAddress.clone(),
+      transportProtocol,
+      tunnelConnection,
+      lastUseTimestampNs: hrtime.bigint(),
+    };
+    const connectionPool =
+      sourceAddress instanceof Ipv4Address
+        ? this.l3Ipv4Connections
+        : this.l3Ipv6Connections;
+    connectionPool.push(connection);
+
+    this.connectionCount += 1;
+  }
+
+  public trackL3Connection(
+      internetBoundPacket: Ipv4OrIpv6Packet,
+      tunnelConnection: TunnelConnection,
   ): void {
     const sourceAddress = internetBoundPacket.getSourceAddress();
     const destinationAddress = internetBoundPacket.getDestinationAddress();
     const transportProtocol = internetBoundPacket.getTransportProtocol();
 
     const existingConnection = this.getL3Connection(
-      destinationAddress,
-      transportProtocol,
+        destinationAddress,
+        transportProtocol,
     );
 
     if (existingConnection === null) {
-      // There's no existing connection for that destination/protocol combo,
-      // so it's safe to create a new one.
-
-      if (MAX_CONNECTIONS <= this.connectionCount) {
-        throw new Error('Too many connections open');
-      }
-
-      const connection: L3Connection<typeof sourceAddress> = {
-        privateEndpoint: sourceAddress.clone(),
-        publicEndpoint: destinationAddress.clone(),
-        transportProtocol,
-        tunnelConnection,
-        lastUseTimestampNs: hrtime.bigint(),
-      };
-      const connectionPool =
-        sourceAddress instanceof Ipv4Address
-          ? this.l3Ipv4Connections
-          : this.l3Ipv6Connections;
-      connectionPool.push(connection);
-
-      this.connectionCount += 1;
+      // There's no existing connection for that destination/protocol combo
+      this.createL3Connection(
+          sourceAddress,
+          destinationAddress,
+          transportProtocol,
+          tunnelConnection,
+      );
     } else if (existingConnection.tunnelConnection === tunnelConnection) {
       if (existingConnection.privateEndpoint.equals(sourceAddress)) {
         existingConnection.lastUseTimestampNs = hrtime.bigint();
       } else {
         throw new Error(
-          'Connection exists for different private address in same tunnel',
+            'Connection exists for different private address in same tunnel',
         );
       }
     } else {
       // TODO: Handle the case where the VPN client is reconnecting
       // (it'd be a different tunnel connection)
       throw new Error(
-        'Another tunnel connection already exists for this destination/protocol combo',
+          'Another tunnel connection already exists for this destination/protocol combo',
       );
     }
   }
