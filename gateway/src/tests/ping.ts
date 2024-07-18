@@ -7,10 +7,11 @@ import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
 import { initPacket } from '../ip/packets.js';
 
 const SOURCE_ADDRESS_STR = argv[2] ?? '1.2.3.4';
+const DESTINATION_ADDRESS_STR = argv[3] ?? '1.1.1.1';
 
 const GATEWAY_URL = 'ws://localhost:8080';
 const SOURCE_ADDRESS = Ipv4Address.fromString(SOURCE_ADDRESS_STR);
-const TARGET_ADDRESS = Ipv4Address.fromString('1.1.1.1');
+const TARGET_ADDRESS = Ipv4Address.fromString(DESTINATION_ADDRESS_STR);
 
 // ICMP echo (ping)
 const ICMP_PACKET = Buffer.from([

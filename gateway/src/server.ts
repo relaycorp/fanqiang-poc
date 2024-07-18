@@ -1,5 +1,5 @@
 import { Duplex } from 'node:stream';
-import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
+import { filter, map, pipeline } from 'streaming-iterables';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
 
 import { TunInterface } from './TunInterface.js';
@@ -87,43 +87,12 @@ function forwardPacketsFromTunnel(
   );
 }
 
-function forwardPacketsFromInternet(
-  wsStream: Duplex,
-  tunReadStream: AsyncIterable<Ipv4OrIpv6Packet>,
-) {
-  // TODO: Restore the client's IP address
-
-  // TODO: Check that the pipe ends when the client disconnects
-  return pipeline(
-    () => tunReadStream,
-    map((packet) => {
-      if (packet instanceof Ipv6Packet) {
-        console.error('✖ I→T: Unsupported IPv6 packet');
-        return null;
-      }
-
-      const ipPacketValidation = packet.validate();
-      if (ipPacketValidation === IpPacketValidation.VALID) {
-        console.log(`✔ I→T: ${packet}`);
-      } else {
-        console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
-        return null;
-      }
-
-      return packet.buffer;
-    }),
-    filter((packet): packet is Buffer => packet !== null),
-    writeToStream(wsStream),
-  );
-}
-
 WS_SERVER.on('connection', async (wsClient: WebSocket, wsRequest) => {
   console.log('Client connected');
 
   const wsStream = createWebSocketStream(wsClient);
 
   const tunWriteStream = tunInterface.createWriter();
-  const tunReadStream = tunInterface.createReader();
 
   const tunnelConnection = new WebsocketTunnel(
     wsClient,
@@ -132,10 +101,7 @@ WS_SERVER.on('connection', async (wsClient: WebSocket, wsRequest) => {
   );
 
   try {
-    await Promise.all([
-      forwardPacketsFromTunnel(wsStream, tunnelConnection, tunWriteStream),
-      forwardPacketsFromInternet(wsStream, tunReadStream),
-    ]);
+    await forwardPacketsFromTunnel(wsStream, tunnelConnection, tunWriteStream);
   } catch (err: any) {
     if (err.code !== 'EIO' && err.syscall) {
       console.error('Failed to communicate with TUN device', err);
@@ -148,3 +114,26 @@ WS_SERVER.on('connection', async (wsClient: WebSocket, wsRequest) => {
 });
 
 console.log('Server started on port 8080');
+
+// TODO: Check that the pipe ends when the client disconnects
+await pipeline(
+  () => tunInterface.createReader(),
+  map((packet) => {
+    if (packet instanceof Ipv6Packet) {
+      console.error('✖ I→T: Unsupported IPv6 packet');
+      return null;
+    }
+
+    const ipPacketValidation = packet.validate();
+    if (ipPacketValidation === IpPacketValidation.VALID) {
+      console.log(`✔ I→T: ${packet}`);
+    } else {
+      console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
+      return null;
+    }
+
+    return packet;
+  }),
+  filter(isPacket),
+  NAT.forwardPacketsFromInternet(),
+);

@@ -1,4 +1,3 @@
-import { promisify } from 'node:util';
 import { WebSocket } from 'ws';
 
 import type { TunnelConnection } from '../nat/TunnelConnection.js';
@@ -7,8 +6,6 @@ import { Ipv4OrIpv6Packet } from '../ip/Ipv4OrIpv6Packet.js';
 export class WebsocketTunnel implements TunnelConnection {
   public readonly id: string;
 
-  protected readonly wsSendPromisified: (data: Buffer) => Promise<void>;
-
   constructor(
     protected wsClient: WebSocket,
     remoteIpAddress: string,
@@ -16,11 +13,18 @@ export class WebsocketTunnel implements TunnelConnection {
   ) {
     this.id = `${remoteIpAddress}-${remotePort}`;
     this.wsClient = wsClient;
-    this.wsSendPromisified = promisify(wsClient.send);
   }
 
   async sendPacket(packet: Ipv4OrIpv6Packet) {
-    return this.wsSendPromisified(packet.buffer);
+    return new Promise<void>((resolve, reject) => {
+      this.wsClient.send(packet.buffer, (err) => {
+        if (err) {
+          reject(new Error(`Failed to send packet to ${this.id}`, err));
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 
   isAlive() {

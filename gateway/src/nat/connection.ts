@@ -1,41 +1,36 @@
 import { TunnelConnection } from './TunnelConnection.js';
 import { BaseIpAddress } from '../ip/BaseIpAddress.js';
 
-/**
- * Represents a connection between two endpoints.
- */
-interface Connection<Endpoint> {
-  /**
-   * The endpoint behind the tunnel.
-   */
-  readonly privateEndpoint: Endpoint;
-
-  /**
-   * The Internet host that the private endpoint is communicating with.
-   */
-  readonly publicEndpoint: Endpoint;
-
-  readonly transportProtocol: number;
-
-  lastUseTimestampNs: bigint;
-
+export interface PrivateEndpoint<Address extends BaseIpAddress<any>> {
+  readonly address: Address;
   readonly tunnelConnection: TunnelConnection;
 }
 
 /**
- * A connection whose Transport Layer protocol is not supported by the NAT.
+ * Represents a connection between two endpoints.
  */
-export type L3Connection<Address extends BaseIpAddress<any>> =
-  Connection<Address>;
+export interface Connection<Address extends BaseIpAddress<any>> {
+  /**
+   * The endpoint behind the tunnel.
+   */
+  readonly privateEndpoint: PrivateEndpoint<Address>;
 
-interface Endpoint<Address extends BaseIpAddress<any>> {
-  address: Address;
-  port: number;
+  /**
+   * The Internet host that the private endpoint is communicating with.
+   */
+  readonly publicEndpointAddress: Address;
+
+  readonly transportProtocol: number;
+
+  lastUseTimestampNs: bigint;
 }
 
 /**
  * A connection whose Transport Layer protocol is supported by the NAT.
  */
-export type L4Connection<Address extends BaseIpAddress<any>> = Connection<
-  Endpoint<Address>
->;
+export interface L4Connection<Address extends BaseIpAddress<any>>
+  extends Connection<Address> {
+  readonly privateEndpointPort: number;
+  readonly publicEndpointPort: number;
+  readonly natPort: number;
+}

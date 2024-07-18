@@ -10,6 +10,10 @@ import { ConnectionTracker } from './ConnectionTracker.js';
 
 export type PacketForwardResult = Result<Ipv4OrIpv6Packet, Error>;
 
+type PacketProcessor = (
+  packets: AsyncIterable<Ipv4OrIpv6Packet>,
+) => AsyncIterable<PacketForwardResult>;
+
 /**
  * A network address and port translation (NAPT) or one-to-many NAT.
  *
@@ -36,9 +40,7 @@ export class Nat {
 
   public forwardPacketsFromTunnel(
     tunnelConnection: TunnelConnection,
-  ): (
-    packets: AsyncIterable<Ipv4OrIpv6Packet>,
-  ) => AsyncIterable<PacketForwardResult> {
+  ): PacketProcessor {
     const nat = this;
     return async function* (
       packets: AsyncIterable<Ipv4OrIpv6Packet>,
@@ -66,6 +68,47 @@ export class Nat {
 
         nat.translatePacketFromTunnel(packet);
         yield { didSucceed: true, result: packet } as PacketForwardResult;
+      }
+    };
+  }
+
+  public forwardPacketsFromInternet(): (
+    packets: AsyncIterable<Ipv4OrIpv6Packet>,
+  ) => Promise<void> {
+    const nat = this;
+    return async function (
+      packets: AsyncIterable<Ipv4OrIpv6Packet>,
+    ): Promise<void> {
+      for await (const packet of packets) {
+        const sourceAddress = packet.getSourceAddress();
+        const protocol = packet.getTransportProtocol();
+        const endpoint = nat.tracker.getL3PrivateEndpoint(
+          sourceAddress,
+          protocol,
+        );
+        if (endpoint === null) {
+          console.error(
+            `No connection found for ${sourceAddress} with protocol ${protocol}`,
+          );
+          continue;
+        }
+
+        const { tunnelConnection } = endpoint;
+        if (tunnelConnection.isAlive()) {
+          packet.prepareForForwarding(
+            ForwardingSide.DESTINATION,
+            endpoint.address,
+          );
+          tunnelConnection
+            .sendPacket(packet)
+            .catch((err) =>
+              console.error('Failed to send packet to client:', err),
+            );
+        } else {
+          console.error(
+            `Skipping packet for dead tunnel connection ${tunnelConnection.id}`,
+          );
+        }
       }
     };
   }
