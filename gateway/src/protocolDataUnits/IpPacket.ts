@@ -4,6 +4,7 @@ import { BaseIpChecksumContext } from '../serviceDataUnits/checksums/IpChecksumC
 import { initServiceData } from '../serviceDataUnits/init.js';
 import { IpPacketValidation } from './IpPacketValidation.js';
 import { ForwardingSide } from '../nat/ForwardingSide.js';
+import { ServiceDataValidation } from '../serviceDataUnits/ServiceDataValidation.js';
 
 export abstract class IpPacket<Address extends Ipv4Or6Address> {
   constructor(public buffer: Buffer) {}
@@ -42,8 +43,8 @@ export abstract class IpPacket<Address extends Ipv4Or6Address> {
     const serviceData = this.getServiceData();
     if (serviceData instanceof ServiceDataUnit) {
       const checksumContext = this.getServiceDataChecksumContext();
-      const isServiceDataValid = serviceData.validate(checksumContext);
-      if (!isServiceDataValid) {
+      const serviceDataValidation = serviceData.validate(checksumContext);
+      if (serviceDataValidation !== ServiceDataValidation.VALID) {
         return IpPacketValidation.INVALID_PAYLOAD;
       }
     }
