@@ -53,9 +53,9 @@ sequenceDiagram
 The idea of tunnelling VPN or proxy traffic through HTTPS websites to prevent active probing is not new.
 Typically,
 this is done over WebSockets;
-[the Tor project uses it as one of its _bridges_](https://blog.torproject.org/introducing-webtunnel-evading-censorship-by-hiding-in-plain-sight/) and,
-as of mid 2024,
-[138 GitHub repositories match the query `(VPN OR tunnel) AND WebSockets`](https://github.com/search?q=%28VPN+OR+tunnel%29+AND+WebSockets&type=repositories&s=&o=desc).
+[this is what Tor's WebTunnel _bridge_](https://blog.torproject.org/introducing-webtunnel-evading-censorship-by-hiding-in-plain-sight/)
+and
+[potentially many other projects on GitHub](https://github.com/search?q=%28VPN+OR+tunnel%29+AND+WebSockets&type=repositories&s=&o=desc) do.
 In recent years,
 the technique has been studied academically under the name
 [HTTPT](https://www.usenix.org/conference/foci20/presentation/frolov).
