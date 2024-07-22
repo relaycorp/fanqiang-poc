@@ -20,6 +20,7 @@ export class ConnectionTracker {
   protected l3Ipv4Connections: Connection<Ipv4Address>[] = [];
   protected l3Ipv6Connections: Connection<Ipv6Address>[] = [];
 
+  // TODO: As a full cone NAT, we should track the private endpoint instead.
   protected getL3Connection<Address extends IpAddress<any>>(
     publicEndpointAddress: Address,
     transportProtocol: number,
