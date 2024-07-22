@@ -1,8 +1,9 @@
 # Fān Qiáng ("翻墙") Proof of Concept
 
 This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
-a VPN tunnelling protocol that mitigates [active probing](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing) and
-[enumeration](https://github.com/scriptzteam/Tor-Bridges-Collector).
+a VPN tunnelling protocol that mitigates [active probing](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing),
+[enumeration](https://github.com/scriptzteam/Tor-Bridges-Collector)
+and traffic analysis.
 This PoC turns **any HTTPS website** into a tunnel,
 thus making user traffic pass off as regular web browsing.
 
@@ -47,6 +48,9 @@ sequenceDiagram
     Gateway->>Tunnel: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
     Tunnel->>Client: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
 ```
+
+Although not implemented in this PoC,
+the client and server will exchange E2E encrypted _noise_ messages of random sizes and at random intervals to mitigate traffic analysis.
 
 ## How this is different from other HTTPS-based tunnels
 
