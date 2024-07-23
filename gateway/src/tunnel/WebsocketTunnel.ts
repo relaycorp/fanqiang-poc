@@ -1,25 +1,26 @@
 import { WebSocket } from 'ws';
 
-import type { TunnelConnection } from '../nat/TunnelConnection.js';
+import { TunnelConnection } from '../nat/TunnelConnection.js';
+import type { TunInterface } from '../tun/TunInterface.js';
 import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
 
-export class WebsocketTunnel implements TunnelConnection {
-  public readonly id: string;
-
+export class WebsocketTunnel extends TunnelConnection {
   constructor(
     protected wsClient: WebSocket,
     remoteIpAddress: string,
     remotePort: number,
+    tunInterface: TunInterface,
   ) {
-    this.id = `${remoteIpAddress}-${remotePort}`;
-    this.wsClient = wsClient;
+    super(`${remoteIpAddress}-${remotePort}`, tunInterface);
   }
 
-  async sendPacket(packet: Ipv4Or6Packet) {
+  override async sendPacket(packet: Ipv4Or6Packet) {
     return new Promise<void>((resolve, reject) => {
       this.wsClient.send(packet.buffer, (err) => {
         if (err) {
-          reject(new Error(`Failed to send packet to ${this.id}`, err));
+          reject(
+            new Error(`Failed to send packet to ${this.id}`, { cause: err }),
+          );
         } else {
           resolve();
         }
@@ -27,7 +28,7 @@ export class WebsocketTunnel implements TunnelConnection {
     });
   }
 
-  isAlive() {
+  override isAlive() {
     return this.wsClient.readyState === WebSocket.OPEN;
   }
 }
