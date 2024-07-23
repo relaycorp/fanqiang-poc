@@ -36,7 +36,12 @@ await runTest(async (sourceAddress, destinationAddress, gatewayClient) => {
     const pong = await gatewayClient.readNextPacket();
     const endTime = hrtime.bigint();
     const elapsedMs = Number(endTime - startTime) / 1_000_000;
-    console.log(`↓ ${pong} (${elapsedMs.toFixed(2)}ms)`);
+    const pongInfo = `${pong} (${elapsedMs.toFixed(2)}ms)`;
+    if (sourceAddress.equals(pong.getDestinationAddress())) {
+      console.log(`↓ ${pongInfo}`);
+    } else {
+      console.log(`✗ Invalid destination: ${pongInfo}`);
+    }
 
     await setTimeout(PING_INTERVAL_SECONDS * 1_000);
   }

@@ -1,9 +1,63 @@
-import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
+import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
+import { Ipv4Packet } from '../protocolDataUnits/ipv4/Ipv4Packet.js';
+import { TunInterface } from '../tun/TunInterface.js';
 
-export interface TunnelConnection {
-  id: string;
+const MAX_SOURCE_ADDRESSES_PER_CONNECTION = 32;
 
-  sendPacket(packet: Ipv4Or6Packet): Promise<void>;
+export abstract class TunnelConnection {
+  protected privateToPublicIpMap: Map<string, Ipv4Address> = new Map();
+  protected publicToInternalIpMap: Map<string, Ipv4Address> = new Map();
 
-  isAlive(): boolean;
+  protected constructor(
+    public readonly id: string,
+    protected tunInterface: TunInterface,
+  ) {}
+
+  abstract sendPacket(packet: Ipv4Packet): Promise<void>;
+
+  abstract isAlive(): boolean;
+
+  protected getOrCreateSourceNatMapping(
+    clientAddress: Ipv4Address,
+  ): Ipv4Address {
+    const clientAddressStr = clientAddress.toString();
+    let tunAddress = this.privateToPublicIpMap.get(clientAddressStr);
+    if (tunAddress === undefined) {
+      if (
+        MAX_SOURCE_ADDRESSES_PER_CONNECTION <= this.privateToPublicIpMap.size
+      ) {
+        throw new Error('Maximum number of source NAT mappings reached');
+      }
+
+      tunAddress = this.tunInterface.allocateAddress();
+      this.privateToPublicIpMap.set(clientAddressStr, tunAddress.clone());
+      this.publicToInternalIpMap.set(
+        tunAddress.toString(),
+        clientAddress.clone(),
+      );
+    }
+    return this.privateToPublicIpMap.get(clientAddressStr)!;
+  }
+
+  // TODO: Not convinced this is the right class for this method
+  public routePacketToInternet(packet: Ipv4Packet): void {
+    const sourceAddress = packet.getSourceAddress();
+    const natAddress = this.getOrCreateSourceNatMapping(sourceAddress);
+    packet.setSourceAddress(natAddress);
+    packet.recalculateChecksum();
+  }
+
+  // TODO: Not convinced this is the right class for this method
+  public routePacketFromInternet(packet: Ipv4Packet): boolean {
+    const destinationAddress = packet.getDestinationAddress();
+    const originalSource = this.publicToInternalIpMap.get(
+      destinationAddress.toString(),
+    );
+    if (originalSource) {
+      packet.setDestinationAddress(originalSource);
+      packet.recalculateChecksum();
+    }
+
+    return !!originalSource;
+  }
 }

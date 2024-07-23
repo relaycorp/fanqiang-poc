@@ -3,8 +3,9 @@ import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 // @ts-ignore
 import { tunAlloc } from './tun-wrapper.cjs'; // TODO: Fix type definitions
-import { initPacket } from './protocolDataUnits/packets.js';
-import { Ipv4Or6Packet } from './protocolDataUnits/Ipv4Or6Packet.js';
+import { initPacket } from '../protocolDataUnits/packets.js';
+import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
+import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
@@ -12,13 +13,17 @@ const INTERFACE_PATH = '/dev/net/tun';
 const INTERFACE_MTU = 1500;
 
 export class TunInterface {
-  private file: FileHandle;
+  private readonly file: FileHandle;
+  private nextAddress: number = 2; // Because 0 and 1 are reserved
 
-  private constructor(file: FileHandle) {
+  private constructor(
+    file: FileHandle,
+    public readonly id: number,
+  ) {
     this.file = file;
   }
 
-  public static async open(name: string = 'tun0'): Promise<TunInterface> {
+  public static async open(id: number): Promise<TunInterface> {
     let interfaceFile: FileHandle;
     try {
       // TODO: Use O_NONBLOCK to avoid blocking. This requires handling EAGAIN/EWOULDBLOCK errors.
@@ -27,6 +32,7 @@ export class TunInterface {
       throw new Error('Failed to open TUN device', { cause: error });
     }
 
+    const name = `tun${id}`;
     const tunAllocResult = tunAlloc(name, interfaceFile.fd);
     if (tunAllocResult !== 0) {
       await interfaceFile.close();
@@ -35,7 +41,7 @@ export class TunInterface {
       );
     }
 
-    return new TunInterface(interfaceFile);
+    return new TunInterface(interfaceFile, id);
   }
 
   public async close(): Promise<void> {
@@ -81,5 +87,16 @@ export class TunInterface {
         map((packet) => packet.buffer),
         writeToStream(stream),
       );
+  }
+
+  public allocateAddress(): Ipv4Address {
+    if (this.nextAddress > 254) {
+      throw new Error(
+        'No more addresses available in the TUN interface subnet',
+      );
+    }
+    return Ipv4Address.fromString(
+      `10.0.${100 + this.id}.${this.nextAddress++}`,
+    );
   }
 }

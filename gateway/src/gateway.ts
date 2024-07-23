@@ -1,41 +1,19 @@
-import { Duplex } from 'node:stream';
-import { filter, map, pipeline } from 'streaming-iterables';
+import type { IncomingMessage } from 'node:http';
+import type { Duplex } from 'node:stream';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
+import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
 
-import { TunInterface } from './TunInterface.js';
-import { Ipv4Address } from './protocolDataUnits/ipv4/Ipv4Address.js';
-import { initPacket } from './protocolDataUnits/packets.js';
-import { Ipv4Or6Packet } from './protocolDataUnits/Ipv4Or6Packet.js';
-import { IpPacketValidation } from './protocolDataUnits/IpPacketValidation.js';
-import { Ipv6Packet } from './protocolDataUnits/ipv6/Ipv6Packet.js';
-import { Ipv6Address } from './protocolDataUnits/ipv6/Ipv6Address.js';
-import { Nat } from './nat/Nat.js';
-import type { TunnelConnection } from './nat/TunnelConnection.js';
+import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { WebsocketTunnel } from './tunnel/WebsocketTunnel.js';
+import { TunInterface } from './tun/TunInterface.js';
+import { Ipv4Or6Packet } from './protocolDataUnits/Ipv4Or6Packet.js';
+import { TunnelConnection } from './nat/TunnelConnection.js';
+import { initPacket } from './protocolDataUnits/packets.js';
+import { Ipv6Packet } from './protocolDataUnits/ipv6/Ipv6Packet.js';
+import { IpPacketValidation } from './protocolDataUnits/IpPacketValidation.js';
 
-// TODO: Retrieve using `os.networkInterfaces()`
-const GATEWAY_IPV4_ADDRESS = '10.0.0.2';
-
-const WS_SERVER = new WebSocketServer({ host: '127.0.0.1', port: 8080 });
-const NAT = new Nat(
-  Ipv4Address.fromString(GATEWAY_IPV4_ADDRESS),
-  Ipv6Address.fromString('0:0:0:0:0:0:0:0'), // TODO: Support IPv6
-);
-
-// TODO: Should we allocate each process to a different TUN interface?
-const tunInterface = await TunInterface.open();
-
-async function shutDown() {
-  console.log('Shutting down');
-
-  WS_SERVER.close();
-
-  // TODO: Fix this close() as it's causing the process to hang when exiting
-  // Try https://github.com/mafintosh/why-is-node-running
-  await tunInterface.close();
-}
-
-process.on('SIGINT', shutDown);
+const TUN_INTERFACE_COUNT = 5;
+const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
 
 function isPacket(packet: Ipv4Or6Packet | null): packet is Ipv4Or6Packet {
   return packet !== null;
@@ -63,9 +41,15 @@ function forwardPacketsFromTunnel(
         return null;
       }
 
+      if (packet.getDestinationAddress().isPrivate()) {
+        console.log(`✖ T→I: ${packet} (Destination is private address)`);
+        return null;
+      }
+
       const ipPacketValidation = packet.validate();
       if (ipPacketValidation === IpPacketValidation.VALID) {
         console.log(`✔ T→I: ${packet}`);
+        tunnelConnection.routePacketToInternet(packet);
         return packet;
       }
 
@@ -73,67 +57,103 @@ function forwardPacketsFromTunnel(
       return null;
     }),
     filter(isPacket),
-    NAT.forwardPacketsFromTunnel(tunnelConnection),
-    map((result) => {
-      if (result.didSucceed) {
-        return result.result;
-      }
-
-      console.error('Error forwarding packet:', result.context);
-      return null;
-    }),
-    filter(isPacket),
     tunWriteStream,
   );
 }
 
-WS_SERVER.on('connection', async (wsClient: WebSocket, wsRequest) => {
-  console.log('Client connected');
+async function forwardPacketsFromInternet(
+  tunReader: AsyncIterable<Ipv4Or6Packet>,
+  tunnelConnection: TunnelConnection,
+  wsStream: Duplex,
+) {
+  return pipeline(
+    () => tunReader,
+    map((packet) => {
+      if (packet instanceof Ipv6Packet) {
+        // TODO: Add IPv6 support
+        console.log('✖ T→I: Unsupported IPv6 packet');
+        return null;
+      }
 
-  const wsStream = createWebSocketStream(wsClient);
+      if (packet.getSourceAddress().isPrivate()) {
+        console.log(`✖ I→T: ${packet} (Source is private address)`);
+        return null;
+      }
 
-  const tunWriteStream = tunInterface.createWriter();
+      const ipPacketValidation = packet.validate();
+      if (ipPacketValidation === IpPacketValidation.VALID) {
+        const routingSucceeded =
+          tunnelConnection.routePacketFromInternet(packet);
+        if (routingSucceeded) {
+          console.log(`✔ I→T: ${packet}`);
+        } else {
+          console.log(`✖ I→T: ${packet} (error: NAT mapping not found)`);
+          return null;
+        }
+      } else {
+        console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
+        return null;
+      }
+      return packet.buffer;
+    }),
+    filter((packetBuffer): packetBuffer is Buffer => packetBuffer !== null),
+    writeToStream(wsStream),
+  );
+}
 
-  const tunnelConnection = new WebsocketTunnel(
+async function handleConnection(
+  wsClient: WebSocket,
+  wsRequest: IncomingMessage,
+) {
+  let tunInterface: TunInterface;
+  try {
+    tunInterface = await tunPool.allocateInterface();
+  } catch (err) {
+    console.error('Failed to allocate TUN interface:', err);
+    wsClient.close(1013, 'No available TUN interfaces');
+    return;
+  }
+
+  wsClient.on('close', async () => {
+    // TODO: Fix this close() as it's causing the process to hang when exiting
+    // Try https://github.com/mafintosh/why-is-node-running
+    await tunInterface.close();
+
+    tunPool.releaseInterface(tunInterface);
+  });
+
+  const tunnel = new WebsocketTunnel(
     wsClient,
     wsRequest.socket.remoteAddress!,
     wsRequest.socket.remotePort!,
+    tunInterface,
   );
 
-  try {
-    await forwardPacketsFromTunnel(wsStream, tunnelConnection, tunWriteStream);
-  } catch (err: any) {
-    if (err.code !== 'EIO' && err.syscall) {
-      console.error('Failed to communicate with TUN device', err);
-    } else {
-      console.error('Failed to forward packets', err);
-    }
-    await shutDown();
-    throw new Error('Failed to forward packets', { cause: err });
-  }
-});
+  const wsStream = createWebSocketStream(wsClient);
+  const tunReader = tunInterface.createReader();
+  const tunWriter = tunInterface.createWriter();
+  await Promise.all([
+    forwardPacketsFromTunnel(wsStream, tunnel, tunWriter),
+    forwardPacketsFromInternet(tunReader, tunnel, wsStream),
+  ]);
+}
 
-console.log('Server started on port 8080');
+async function runServer() {
+  const server = new WebSocketServer({ host: '127.0.0.1', port: 8080 });
 
-// TODO: Check that the pipe ends when the client disconnects
-await pipeline(
-  () => tunInterface.createReader(),
-  map((packet) => {
-    if (packet instanceof Ipv6Packet) {
-      console.error('✖ I→T: Unsupported IPv6 packet');
-      return null;
-    }
+  process.on('SIGINT', async () => {
+    console.log('Shutting down...');
+    server.close(() => {
+      console.log('WebSocket server closed');
+      process.exit(0);
+    });
+  });
 
-    const ipPacketValidation = packet.validate();
-    if (ipPacketValidation === IpPacketValidation.VALID) {
-      console.log(`✔ I→T: ${packet}`);
-    } else {
-      console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
-      return null;
-    }
+  server.on('connection', handleConnection);
 
-    return packet;
-  }),
-  filter(isPacket),
-  NAT.forwardPacketsFromInternet(),
-);
+  server.on('listening', () => {
+    console.log('WebSocket server started on ws://127.0.0.1:8080');
+  });
+}
+
+await runServer();

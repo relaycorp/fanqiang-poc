@@ -27,7 +27,7 @@ async function establishTcpConnection(
     1000, // Initial sequence number
     0,
     [TcpFlag.SYN],
-      TCP_WINDOW_SIZE,
+    TCP_WINDOW_SIZE,
     checksumContext,
   );
   const synPacket = Ipv4Packet.create(
@@ -52,7 +52,7 @@ async function establishTcpConnection(
     serverAckNum,
     serverSeqNum + 1,
     [TcpFlag.ACK],
-      TCP_WINDOW_SIZE,
+    TCP_WINDOW_SIZE,
     checksumContext,
   );
 
