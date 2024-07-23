@@ -3,9 +3,9 @@ set -o nounset
 set -o errexit
 set -o pipefail
 
-TUN_INTERFACE_NAME="tun0"
-TUN_SUBNET="10.0.0.1/24"
-TUN_INTERFACE_IPV4_ADDRESS="10.0.0.2"
+TUN_INTERFACE_COUNT=5
+TUN_SUBNET_PREFIX="10.0"
+TUN_SUBNET="${TUN_SUBNET_PREFIX}.0.0/8"
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <up|down>" >&2
@@ -50,7 +50,7 @@ function get_internet_interface_name() {
     cat "${CONFIGURED_INTERNET_INTERFACE_NAME_FILE}"
 }
 
-function is_traffic_from_tun_interface_masquerared() {
+function is_traffic_from_tun_interfaces_masqueraded() {
     local internet_interface="$1"
 
     if ! sudo iptables --table nat --check POSTROUTING --out-interface "${internet_interface}" --source "${TUN_SUBNET}" --destination 0.0.0.0/0 --jump MASQUERADE 2>>/dev/null; then
@@ -60,7 +60,7 @@ function is_traffic_from_tun_interface_masquerared() {
     return 0
 }
 
-function masquerade_traffic_from_tun_interface() {
+function masquerade_traffic_from_tun_interfaces() {
     local internet_interface="$1"
 
     sudo iptables --table nat \
@@ -71,7 +71,7 @@ function masquerade_traffic_from_tun_interface() {
         --destination 0.0.0.0/0
 }
 
-function drop_masquerading_from_tun_interface() {
+function drop_masquerading_from_tun_interfaces() {
     local internet_interface="$1"
 
     sudo iptables --table nat \
@@ -80,6 +80,93 @@ function drop_masquerading_from_tun_interface() {
         --out-interface "${internet_interface}" \
         --source "${TUN_SUBNET}" \
         --destination 0.0.0.0/0
+}
+
+function create_tun_interface() {
+    local interface_name="$1"
+    local interface_subnet="$2"
+
+    if ip link show "${interface_name}" &> /dev/null; then
+        sudo ip link set down dev "${interface_name}"
+        sudo ip addr flush dev "${interface_name}"
+    else
+        sudo ip tuntap add dev "${interface_name}" mode tun user "${USER}"
+    fi
+
+    sudo ip addr add "${interface_subnet}" dev "${interface_name}"
+    sudo ip link set up dev "${interface_name}"
+
+    local interface_address
+    interface_address="$(echo "${interface_subnet}" | cut -d'/' -f1)"
+    sudo ip route add "${interface_address}/32" dev "${interface_name}"
+
+    echo "Configured ${interface_name} with ${interface_subnet}"
+}
+
+function delete_tun_interface() {
+    local interface_name="$1"
+
+    if ip link show "${interface_name}" &> /dev/null; then
+        echo "Deleting ${interface_name}..."
+        sudo ip link set down dev "${interface_name}"
+        sudo ip tuntap del dev "${interface_name}" mode tun
+    else
+        echo "${interface_name} does not exist, skipping deletion"
+    fi
+}
+
+function remove_route_if_exists() {
+    local interface_subnet="$1"
+    if ip route show exact "${interface_subnet}" &> /dev/null; then
+        echo "Removing route for ${interface_subnet}..."
+        # TODO: Do we need the fallback to echo?
+        sudo ip route del "${interface_subnet}" || echo "Warning: Failed to remove route for ${interface_subnet}"
+    fi
+}
+
+function add_route_if_not_exists() {
+    local interface_subnet="$1"
+    local tun="$2"
+    if ip route show exact "${interface_subnet}" &> /dev/null; then
+        echo "Route for ${interface_subnet} already exists, skipping..."
+    else
+        echo "Adding route for ${interface_subnet}..."
+        if ! sudo ip route add "${interface_subnet}" dev "${tun}"; then
+            # TODO: Do we need the fallback to echo?
+            echo "Warning: Failed to add route for ${interface_subnet}"
+        fi
+    fi
+}
+
+function remove_routing_rules() {
+    local internet_interface="$1"
+
+    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
+        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
+        local tun="tun${index}"
+
+        echo "Removing routing for ${tun}..."
+
+        sudo iptables -D FORWARD -i "${internet_interface}" -o "${tun}" -j ACCEPT 2>/dev/null || true
+
+        sudo ip route del "${interface_subnet}" dev "${tun}" 2>/dev/null || true
+    done
+}
+
+function add_routing_rules() {
+    local internet_interface="$1"
+
+    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
+        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
+        local tun="tun${index}"
+
+        echo "Setting up routing for ${tun}..."
+
+        sudo iptables -A FORWARD -i "${internet_interface}" -o "${tun}" -j ACCEPT
+
+        # Add a route for the TUN interface_subnet (if not already added by create_tun_interface)
+        sudo ip route add "${interface_subnet}" dev "${tun}" 2>/dev/null || true
+    done
 }
 
 function set_up() {
@@ -91,57 +178,59 @@ function set_up() {
         exit 3
     fi
 
-    sudo ip tuntap add \
-        dev "${TUN_INTERFACE_NAME}" \
-        mode tun \
-        user "${USER}"
-    sudo ip addr add "${TUN_SUBNET}" dev "${TUN_INTERFACE_NAME}"
-    sudo ip link set up dev "${TUN_INTERFACE_NAME}"
-
-    # Ensure the interface only receives traffic from its own IP address
-    sudo ip route add "${TUN_INTERFACE_IPV4_ADDRESS}/32" dev "${TUN_INTERFACE_NAME}"
-
-    echo "Created ${TUN_INTERFACE_NAME} (${TUN_INTERFACE_IPV4_ADDRESS})"
+    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
+        create_tun_interface "tun${index}" "${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/24"
+    done
 
     # Configure routing
     set_internet_interface_name "${internet_interface}"
-    if ! is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
-        masquerade_traffic_from_tun_interface "${internet_interface}"
-        echo "Set up NAT to masquerade traffic from ${TUN_INTERFACE_NAME} to ${internet_interface}"
+    if ! is_traffic_from_tun_interfaces_masqueraded "${internet_interface}"; then
+        masquerade_traffic_from_tun_interfaces "${internet_interface}"
+        echo "Set up NAT to masquerade traffic from TUN interfaces to ${internet_interface}"
+    else
+        echo "NAT masquerading already set up for TUN interfaces to ${internet_interface}"
     fi
+
+    remove_routing_rules "${internet_interface}"
+    add_routing_rules "${internet_interface}"
+    echo "Updated routing rules for TUN interfaces"
+
+    echo "Current routing table:"
+    ip route show
+    echo "Current iptables FORWARD rules:"
+    sudo iptables -L FORWARD
+    echo "Current iptables NAT rules:"
+    sudo iptables -t nat -L POSTROUTING
 }
 
 function tear_down() {
-    if [ -n "$(ip route show dev ${TUN_INTERFACE_NAME} "${TUN_INTERFACE_IPV4_ADDRESS}/32")" ]; then
-      sudo ip route del "${TUN_INTERFACE_IPV4_ADDRESS}/32" dev "${TUN_INTERFACE_NAME}"
-      echo "Deleted route for ${TUN_INTERFACE_IPV4_ADDRESS} on ${TUN_INTERFACE_NAME}"
-    fi
-
-    sudo ip link set down dev "${TUN_INTERFACE_NAME}"
-
-    # Delete the address if it exists. It may not exist if a previous attempt to delete it failed.
-    if ip addr show "${TUN_INTERFACE_NAME}" | grep --quiet "${TUN_SUBNET}"; then
-        sudo ip addr del "${TUN_SUBNET}" dev "${TUN_INTERFACE_NAME}"
-    fi
-
-    sudo ip tuntap del \
-        dev "${TUN_INTERFACE_NAME}" \
-        mode tun
-    echo "Deleted ${TUN_INTERFACE_NAME}"
-
     if is_internet_interface_set; then
         local internet_interface
         internet_interface="$(get_internet_interface_name)"
-        if is_traffic_from_tun_interface_masquerared "${internet_interface}"; then
-            drop_masquerading_from_tun_interface "${internet_interface}"
-            echo "Removed NAT masquerading for traffic from ${TUN_INTERFACE_NAME} to ${internet_interface}"
+
+        remove_routing_rules "${internet_interface}"
+        echo "Removed routing rules for TUN interfaces"
+
+        if is_traffic_from_tun_interfaces_masqueraded "${internet_interface}"; then
+            drop_masquerading_from_tun_interfaces "${internet_interface}"
+            echo "Removed NAT masquerading for traffic from TUN interfaces to ${internet_interface}"
         fi
 
         unset_internet_interface_name
     fi
+
+    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
+        delete_tun_interface "tun${index}"
+    done
+
+    echo "Current routing table:"
+    ip route show
+    echo "Current iptables FORWARD rules:"
+    sudo iptables -L FORWARD
+    echo "Current iptables NAT rules:"
+    sudo iptables -t nat -L POSTROUTING
 }
 
-# Determine action based on argument
 case "$1" in
     up)
         set_up
