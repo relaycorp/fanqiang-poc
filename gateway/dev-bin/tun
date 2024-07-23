@@ -85,6 +85,7 @@ function drop_masquerading_from_tun_interfaces() {
 function create_tun_interface() {
     local interface_name="$1"
     local interface_subnet="$2"
+    local internet_interface="$3"
 
     if ip link show "${interface_name}" &> /dev/null; then
         sudo ip link set down dev "${interface_name}"
@@ -96,15 +97,13 @@ function create_tun_interface() {
     sudo ip addr add "${interface_subnet}" dev "${interface_name}"
     sudo ip link set up dev "${interface_name}"
 
-    local interface_address
-    interface_address="$(echo "${interface_subnet}" | cut -d'/' -f1)"
-    sudo ip route add "${interface_address}/32" dev "${interface_name}"
-
     echo "Configured ${interface_name} with ${interface_subnet}"
 }
 
 function delete_tun_interface() {
     local interface_name="$1"
+    local interface_subnet="$2"
+    local internet_interface="$3"
 
     if ip link show "${interface_name}" &> /dev/null; then
         echo "Deleting ${interface_name}..."
@@ -113,60 +112,6 @@ function delete_tun_interface() {
     else
         echo "${interface_name} does not exist, skipping deletion"
     fi
-}
-
-function remove_route_if_exists() {
-    local interface_subnet="$1"
-    if ip route show exact "${interface_subnet}" &> /dev/null; then
-        echo "Removing route for ${interface_subnet}..."
-        # TODO: Do we need the fallback to echo?
-        sudo ip route del "${interface_subnet}" || echo "Warning: Failed to remove route for ${interface_subnet}"
-    fi
-}
-
-function add_route_if_not_exists() {
-    local interface_subnet="$1"
-    local tun="$2"
-    if ip route show exact "${interface_subnet}" &> /dev/null; then
-        echo "Route for ${interface_subnet} already exists, skipping..."
-    else
-        echo "Adding route for ${interface_subnet}..."
-        if ! sudo ip route add "${interface_subnet}" dev "${tun}"; then
-            # TODO: Do we need the fallback to echo?
-            echo "Warning: Failed to add route for ${interface_subnet}"
-        fi
-    fi
-}
-
-function remove_routing_rules() {
-    local internet_interface="$1"
-
-    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
-        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
-        local tun="tun${index}"
-
-        echo "Removing routing for ${tun}..."
-
-        sudo iptables -D FORWARD -i "${internet_interface}" -o "${tun}" -j ACCEPT 2>/dev/null || true
-
-        sudo ip route del "${interface_subnet}" dev "${tun}" 2>/dev/null || true
-    done
-}
-
-function add_routing_rules() {
-    local internet_interface="$1"
-
-    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
-        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
-        local tun="tun${index}"
-
-        echo "Setting up routing for ${tun}..."
-
-        sudo iptables -A FORWARD -i "${internet_interface}" -o "${tun}" -j ACCEPT
-
-        # Add a route for the TUN interface_subnet (if not already added by create_tun_interface)
-        sudo ip route add "${interface_subnet}" dev "${tun}" 2>/dev/null || true
-    done
 }
 
 function set_up() {
@@ -178,11 +123,6 @@ function set_up() {
         exit 3
     fi
 
-    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
-        create_tun_interface "tun${index}" "${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/24"
-    done
-
-    # Configure routing
     set_internet_interface_name "${internet_interface}"
     if ! is_traffic_from_tun_interfaces_masqueraded "${internet_interface}"; then
         masquerade_traffic_from_tun_interfaces "${internet_interface}"
@@ -191,16 +131,14 @@ function set_up() {
         echo "NAT masquerading already set up for TUN interfaces to ${internet_interface}"
     fi
 
-    remove_routing_rules "${internet_interface}"
-    add_routing_rules "${internet_interface}"
-    echo "Updated routing rules for TUN interfaces"
+    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
+        local interface_name="tun${index}"
+        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/24"
 
-    echo "Current routing table:"
-    ip route show
-    echo "Current iptables FORWARD rules:"
-    sudo iptables -L FORWARD
-    echo "Current iptables NAT rules:"
-    sudo iptables -t nat -L POSTROUTING
+        create_tun_interface "${interface_name}" "${interface_subnet}" "${internet_interface}"
+    done
+
+    echo "Updated routing rules for TUN interfaces"
 }
 
 function tear_down() {
@@ -208,7 +146,13 @@ function tear_down() {
         local internet_interface
         internet_interface="$(get_internet_interface_name)"
 
-        remove_routing_rules "${internet_interface}"
+        for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
+            local interface_name="tun${index}"
+            local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
+
+            delete_tun_interface "${interface_name}" "${interface_subnet}" "${internet_interface}"
+        done
+
         echo "Removed routing rules for TUN interfaces"
 
         if is_traffic_from_tun_interfaces_masqueraded "${internet_interface}"; then
@@ -218,17 +162,15 @@ function tear_down() {
 
         unset_internet_interface_name
     fi
+}
 
-    for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
-        delete_tun_interface "tun${index}"
-    done
-
+function show_status() {
     echo "Current routing table:"
     ip route show
-    echo "Current iptables FORWARD rules:"
-    sudo iptables -L FORWARD
+
+    echo
     echo "Current iptables NAT rules:"
-    sudo iptables -t nat -L POSTROUTING
+    sudo iptables --table nat --list POSTROUTING
 }
 
 case "$1" in
@@ -237,6 +179,9 @@ case "$1" in
         ;;
     down)
         tear_down
+        ;;
+    status)
+        show_status
         ;;
     *)
         exit 1
