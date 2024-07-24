@@ -3,3 +3,4 @@
 */src/**.js
 gateway/dev-config/
 .idea/
+gateway/custom-image/*.auto.pkrvars.hcl
