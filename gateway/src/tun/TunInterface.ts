@@ -9,9 +9,6 @@ import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
-// TODO: Consider whether we should retrieve this value from the interface
-const INTERFACE_MTU = 1500;
-
 export class TunInterface {
   private readonly file: FileHandle;
   private nextAddress: number = 2; // Because 0 and 1 are reserved
@@ -62,7 +59,6 @@ export class TunInterface {
   public async *createReader(): AsyncIterable<Ipv4Or6Packet> {
     const stream = this.file.createReadStream({
       autoClose: false,
-      highWaterMark: INTERFACE_MTU,
     });
     try {
       // TODO: Handle malformed/invalid packets. Not that it should happen with TUN devices.
@@ -79,7 +75,6 @@ export class TunInterface {
   ) => Promise<void> {
     const stream = this.file.createWriteStream({
       autoClose: false,
-      highWaterMark: INTERFACE_MTU,
     });
     return (packets) =>
       pipeline(
