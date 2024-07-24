@@ -1,19 +1,10 @@
+#!/bin/bash
 set -o nounset
 set -o errexit
 set -o pipefail
 
 NODEJS_VERSION="20.16.0"
-
-function install_dependencies() {
-    apt-get update
-    apt-get install -y python3-setuptools xz-utils build-essential
-}
-
-function create_user() {
-    useradd -m -s /bin/bash fanqiang
-    chown -R fanqiang:fanqiang /opt/vpn-gateway
-    chmod -R 755 /opt/vpn-gateway
-}
+CADDY_VERSION="2.8.4"
 
 function install_nodejs() {
     wget "https://nodejs.org/dist/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-x64.tar.xz"
@@ -24,24 +15,59 @@ function install_nodejs() {
     rm "node-v${NODEJS_VERSION}-linux-x64.tar.xz"
 }
 
-function setup_vpn_gateway() {
+function install_caddy() {
+    wget "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_amd64.deb"
+    dpkg -i "caddy_${CADDY_VERSION}_linux_amd64.deb"
+    rm "caddy_${CADDY_VERSION}_linux_amd64.deb"
+}
+
+function install_dependencies() {
+    apt-get update
+    apt-get install -y python3-setuptools xz-utils build-essential
+
+    install_nodejs
+    install_caddy
+}
+
+function uninstall_build_dependencies() {
+    apt-get remove -y python3-setuptools xz-utils build-essential
+    apt-get autoremove -y
+}
+
+function install_gateway() {
+    useradd -m -s /bin/bash fanqiang
+    chown -R fanqiang:fanqiang /opt/vpn-gateway
+    chmod -R 755 /opt/vpn-gateway
     cd /opt/vpn-gateway
     sudo -u fanqiang npm install
     sudo -u fanqiang npm run build
     sudo -u fanqiang npm prune --omit=dev
+    mv vpn-gateway.service /etc/systemd/system/
     rm -rf src
+    cd -
 }
 
-function configure_system() {
-    mv /opt/vpn-gateway/vpn-gateway.service /etc/systemd/system/
+function configure_caddy() {
+    DOMAIN_NAME="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/DOMAIN_NAME)"
+    cat > /etc/caddy/Caddyfile <<EOF
+${DOMAIN_NAME} {
+    reverse_proxy localhost:8080
+}
+EOF
+    chown caddy:caddy /etc/caddy/Caddyfile
+    chmod 644 /etc/caddy/Caddyfile
+}
+
+configure_boot() {
     systemctl daemon-reload
     systemctl enable vpn-gateway.service
+    systemctl enable caddy
     mv /opt/vpn-gateway/configure-networking.sh /var/lib/cloud/scripts/per-boot/configure-networking.sh
 }
 
 # Main
 install_dependencies
-create_user
-install_nodejs
-setup_vpn_gateway
-configure_system
+install_gateway
+configure_caddy
+uninstall_build_dependencies
+configure_boot
