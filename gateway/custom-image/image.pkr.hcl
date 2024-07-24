@@ -33,10 +33,6 @@ source "googlecompute" "vpn_gateway" {
   machine_type = "e2-micro"
   disk_size    = 10
   ssh_username = "ubuntu"
-
-  metadata = {
-    startup-script = file("startup-script.sh")
-  }
 }
 
 build {
@@ -53,7 +49,8 @@ build {
     sources = [
       "../bin",
       "../src",
-      "../custom-image",
+      "../custom-image/configure-networking.sh",
+      "../custom-image/vpn-gateway.service",
       "../package.json",
       "../package-lock.json",
       "../tsconfig.json",
@@ -83,9 +80,10 @@ build {
       "sudo -u fanqiang npm run build",
       "sudo -u fanqiang npm prune --omit=dev",
       "sudo rm -rf src",
-      "sudo cp custom-image/vpn-gateway.service /etc/systemd/system/",
+      "sudo mv vpn-gateway.service /etc/systemd/system/",
       "sudo systemctl daemon-reload",
-      "sudo systemctl enable vpn-gateway.service"
+      "sudo systemctl enable vpn-gateway.service",
+      "sudo mv configure-networking.sh /var/lib/cloud/scripts/per-boot/configure-networking.sh",
     ]
   }
 }
