@@ -50,6 +50,7 @@ build {
       "../bin",
       "../src",
       "../custom-image/configure-networking.sh",
+      "../custom-image/provision.sh",
       "../custom-image/vpn-gateway.service",
       "../package.json",
       "../package-lock.json",
@@ -61,29 +62,7 @@ build {
 
   provisioner "shell" {
     inline = [
-      "sudo apt-get update",
-      "sudo apt-get install -y python3-setuptools xz-utils build-essential",
-      "sudo useradd -m -s /bin/bash fanqiang",
-      "sudo chown -R fanqiang:fanqiang /opt/vpn-gateway",
-      "sudo chmod -R 755 /opt/vpn-gateway",
-
-      # Install Node.js
-      "wget https://nodejs.org/dist/v${var.nodejs_version}/node-v${var.nodejs_version}-linux-x64.tar.xz",
-      "sudo mkdir -p /opt/nodejs",
-      "sudo tar -xJvf node-v${var.nodejs_version}-linux-x64.tar.xz -C /opt/nodejs --strip-components=1",
-      "sudo ln -s /opt/nodejs/bin/node /usr/local/bin/node",
-      "sudo ln -s /opt/nodejs/bin/npm /usr/local/bin/npm",
-      "rm node-v${var.nodejs_version}-linux-x64.tar.xz",
-
-      "cd /opt/vpn-gateway",
-      "sudo -u fanqiang npm install",
-      "sudo -u fanqiang npm run build",
-      "sudo -u fanqiang npm prune --omit=dev",
-      "sudo rm -rf src",
-      "sudo mv vpn-gateway.service /etc/systemd/system/",
-      "sudo systemctl daemon-reload",
-      "sudo systemctl enable vpn-gateway.service",
-      "sudo mv configure-networking.sh /var/lib/cloud/scripts/per-boot/configure-networking.sh",
+      "sudo bash /opt/vpn-gateway/provision.sh",
     ]
   }
 }
