@@ -6,11 +6,11 @@ import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { WebsocketTunnel } from './tunnel/WebsocketTunnel.js';
 import { TunInterface } from './tun/TunInterface.js';
-import { Ipv4Or6Packet } from './protocolDataUnits/Ipv4Or6Packet.js';
+import { Ipv4Or6Packet } from './ip/Ipv4Or6Packet.js';
 import { TunnelConnection } from './nat/TunnelConnection.js';
-import { initPacket } from './protocolDataUnits/packets.js';
-import { Ipv6Packet } from './protocolDataUnits/ipv6/Ipv6Packet.js';
-import { IpPacketValidation } from './protocolDataUnits/IpPacketValidation.js';
+import { initPacket } from './ip/packets.js';
+import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
+import { IpPacketValidation } from './ip/IpPacketValidation.js';
 
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);

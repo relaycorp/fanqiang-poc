@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 
-import { Ipv4Or6Packet } from '../../protocolDataUnits/Ipv4Or6Packet.js';
-import { initPacket } from '../../protocolDataUnits/packets.js';
+import { Ipv4Or6Packet } from '../../ip/Ipv4Or6Packet.js';
+import { initPacket } from '../../ip/packets.js';
 
 const GATEWAY_URL = 'ws://localhost:8080';
 

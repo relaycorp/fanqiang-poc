@@ -3,9 +3,9 @@ import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 // @ts-ignore
 import { tunAlloc } from './tun-wrapper.cjs'; // TODO: Fix type definitions
-import { initPacket } from '../protocolDataUnits/packets.js';
-import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
-import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
+import { initPacket } from '../ip/packets.js';
+import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
+import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 

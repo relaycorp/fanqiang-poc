@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 
 import { TunnelConnection } from '../nat/TunnelConnection.js';
 import type { TunInterface } from '../tun/TunInterface.js';
-import { Ipv4Or6Packet } from '../protocolDataUnits/Ipv4Or6Packet.js';
+import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
 
 export class WebsocketTunnel extends TunnelConnection {
   constructor(

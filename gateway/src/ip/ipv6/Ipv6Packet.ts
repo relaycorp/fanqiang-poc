@@ -44,8 +44,4 @@ export class Ipv6Packet extends IpPacket<Ipv6Address> {
   override getTransportProtocol(): number {
     throw new Error('Method not implemented.');
   }
-
-  override getPayload(): Buffer {
-    throw new Error('Method not implemented.');
-  }
 }

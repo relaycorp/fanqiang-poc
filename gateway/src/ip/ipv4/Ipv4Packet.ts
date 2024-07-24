@@ -128,11 +128,6 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
     newIpAddress.buffer.copy(this.buffer, HeaderFieldIndex.DESTINATION_ADDRESS);
   }
 
-  public override getPayload(): Buffer {
-    const payloadOffset = this.getHeaderLength();
-    return this.buffer.subarray(payloadOffset);
-  }
-
   protected isChecksumValid(): boolean {
     const originalChecksum = this.buffer.readUInt16BE(
       HeaderFieldIndex.CHECKSUM,

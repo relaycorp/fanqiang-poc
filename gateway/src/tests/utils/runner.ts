@@ -1,6 +1,6 @@
 import { argv } from 'node:process';
 
-import { Ipv4Address } from '../../protocolDataUnits/ipv4/Ipv4Address.js';
+import { Ipv4Address } from '../../ip/ipv4/Ipv4Address.js';
 import { GatewayClient } from './GatewayClient.js';
 
 const DEFAULT_SOURCE_ADDRESS_PREFIX = '127.0.1.';

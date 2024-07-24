@@ -1,5 +1,5 @@
-import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
-import { Ipv4Packet } from '../protocolDataUnits/ipv4/Ipv4Packet.js';
+import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
 import { TunInterface } from '../tun/TunInterface.js';
 
 const MAX_SOURCE_ADDRESSES_PER_CONNECTION = 32;

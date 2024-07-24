@@ -1,9 +1,9 @@
 import { hrtime } from 'node:process';
 import { setTimeout } from 'node:timers/promises';
 
-import { calculateChecksum } from '../protocolDataUnits/checksum.js';
-import { Ipv4Address } from '../protocolDataUnits/ipv4/Ipv4Address.js';
-import { Ipv4Packet } from '../protocolDataUnits/ipv4/Ipv4Packet.js';
+import { calculateChecksum } from '../ip/checksum.js';
+import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
 import { runTest } from './utils/runner.js';
 
 const PING_INTERVAL_SECONDS = 3;
