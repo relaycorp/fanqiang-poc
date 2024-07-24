@@ -81,9 +81,9 @@ build {
       "cd /opt/vpn-gateway",
       "sudo -u fanqiang npm install",
       "sudo -u fanqiang npm run build",
-      "sudo -u fanqiang npm prune --production",
+      "sudo -u fanqiang npm prune --omit=dev",
       "sudo rm -rf src",
-      "sudo cp vpn-gateway.service /etc/systemd/system/",
+      "sudo cp custom-image/vpn-gateway.service /etc/systemd/system/",
       "sudo systemctl daemon-reload",
       "sudo systemctl enable vpn-gateway.service"
     ]
