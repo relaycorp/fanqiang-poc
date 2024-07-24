@@ -22,7 +22,7 @@ variable "nodejs_version" {
 
 source "googlecompute" "vpn_gateway" {
   project_id              = var.project_id
-  source_image_family     = "ubuntu-2204-lts"
+  source_image_family     = "ubuntu-minimal-2404-lts-amd64"
   source_image_project_id = ["ubuntu-os-cloud"]
   region                  = var.region
   zone                    = "${var.region}-a"
