@@ -1,0 +1,15 @@
+[Unit]
+Description=Fan Qiang
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /opt/vpn-gateway/build/main/gateway.js
+WorkingDirectory=/opt/vpn-gateway
+Restart=always
+User=fanqiang
+Group=fanqiang
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

@@ -40,8 +40,8 @@ npm install
 
 ### Run
 
-You have to create and configure the TUN device with `dev-bin/tun up` before starting the server.
-When you no longer need the server, run `dev-bin/tun down`.
+You have to create and configure the TUN device with `bin/tun up` before starting the server.
+When you no longer need the server, run `bin/tun down`.
 
 To start the server, simply run `npm start`.
 
