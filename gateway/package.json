@@ -9,7 +9,6 @@
     "start": "tsx src/gateway.ts",
     "ping": "tsx src/tests/ping.ts",
     "ping-cf": "tsx src/tests/ping.ts 1.1.1.1",
-    "test-tcp": "tsx src/tests/tcp-hello-bye.ts 1.1.1.1",
     "clean": "del-cli build",
     "fix": "prettier --write ."
   },
