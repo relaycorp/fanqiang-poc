@@ -47,7 +47,7 @@ sequenceDiagram
     note over Gateway: Decrypt PACKET_1 and change source
     Gateway->>Server: PACKET_1 (src: 192.0.2.1, dst: 1.1.1.1)
     Server->>Gateway: PACKET_2 (src: 1.1.1.1, dst: 192.0.2.1)
-    note over Gateway: Encrypt PACKET_2 with Client's key and change destination
+    note over Gateway: Change PACKET_2 destination and encrypt it with Client's key
     Gateway->>Tunnel: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
     Tunnel->>Client: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
     note over Client: Decrypt PACKET_2
