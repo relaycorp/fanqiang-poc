@@ -60,7 +60,7 @@ the client and server will exchange E2E encrypted _noise_ messages of random siz
 
 ## How this is different from other HTTPS-based tunnels
 
-The idea of tunnelling VPN or proxy traffic through HTTPS websites to prevent active probing is not new.
+The idea of tunnelling VPN or proxy traffic through HTTPS to prevent active probing is not new.
 Typically,
 this is done over WebSockets;
 [this is what Tor's WebTunnel _bridge_](https://blog.torproject.org/introducing-webtunnel-evading-censorship-by-hiding-in-plain-sight/)
