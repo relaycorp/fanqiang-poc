@@ -41,13 +41,19 @@ sequenceDiagram
     participant Gateway
     participant Server as 1.1.1.1
     
+    note over Client: Encrypt PACKET_1 with Gateway's key
     Client->>Tunnel: PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
     Tunnel->>Gateway: PACKET_1 (src: 192.168.0.1, dst: 1.1.1.1)
+    note over Gateway: Decrypt PACKET_1 and change source
     Gateway->>Server: PACKET_1 (src: 192.0.2.1, dst: 1.1.1.1)
     Server->>Gateway: PACKET_2 (src: 1.1.1.1, dst: 192.0.2.1)
+    note over Gateway: Encrypt PACKET_2 with Client's key and change destination
     Gateway->>Tunnel: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
     Tunnel->>Client: PACKET_2 (src: 1.1.1.1, dst: 192.168.0.1)
+    note over Client: Decrypt PACKET_2
 ```
+
+The communication between the client and the tunnel, and between the tunnel and the gateway, is done over TLS.
 
 Although not implemented in this PoC,
 the client and server will exchange E2E encrypted _noise_ messages of random sizes and at random intervals to mitigate traffic analysis.
