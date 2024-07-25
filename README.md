@@ -89,7 +89,9 @@ location /<random-path> {
 
 **This is all that's needed to set up a tunnel**.
 By contrast,
-existing solutions also require the tunnel operator to set up and operate a purpose-built WebSocket server.
+existing solutions also require the tunnel operator to set up and operate a purpose-built WebSocket server;
+worse yet,
+some even require elevated privileges to use sensitive networking capabilities.
 
 ## Why create a new VPN protocol
 
