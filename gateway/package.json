@@ -5,13 +5,13 @@
   "scripts": {
     "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.json",
+    "postbuild": "npm run addons:rebuild",
     "addons:rebuild": "node-gyp rebuild",
     "start": "tsx src/gateway.ts",
     "ping": "tsx src/tests/ping.ts",
     "ping-cf": "tsx src/tests/ping.ts 1.1.1.1",
-    "clean": "del-cli build",
-    "fix": "prettier --write .",
-    "preinstall": "npm run addons:rebuild"
+    "clean": "del-cli build dist",
+    "fix": "prettier --write ."
   },
   "dependencies": {
     "private-ip": "^3.0.2",

@@ -1,6 +1,7 @@
 */node_modules
 */build
+*/dist
 */src/**.js
-gateway/dev-config/
 .idea/
+gateway/dev-config/
 gateway/custom-image/*.auto.pkrvars.hcl
