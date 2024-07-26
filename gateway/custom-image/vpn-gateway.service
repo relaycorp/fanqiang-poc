@@ -3,7 +3,7 @@ Description=Fan Qiang
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/node /opt/vpn-gateway/build/main/gateway.js
+ExecStart=/opt/nodejs/bin/node build/main/gateway.js
 WorkingDirectory=/opt/vpn-gateway
 Restart=always
 User=fanqiang
