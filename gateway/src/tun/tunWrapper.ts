@@ -7,7 +7,14 @@ const __dirname = path.dirname(__filename);
 
 const require = createRequire(import.meta.url);
 
-const tunPath = path.join(__dirname, '..', '..', 'build', 'Release', 'tun.node');
+const tunPath = path.join(
+  __dirname,
+  '..',
+  '..',
+  'build',
+  'Release',
+  'tun.node',
+);
 
 const tun = require(tunPath);
 
