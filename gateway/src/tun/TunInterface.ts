@@ -1,8 +1,7 @@
 import { open, FileHandle } from 'node:fs/promises';
 import { map, pipeline, writeToStream } from 'streaming-iterables';
 
-// @ts-ignore
-import { tunAlloc } from './tun-wrapper.cjs'; // TODO: Fix type definitions
+import { tunAlloc } from './tunWrapper.js';
 import { initPacket } from '../ip/packets.js';
 import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
 import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
