@@ -30,7 +30,7 @@ source "googlecompute" "vpn_gateway" {
   image_family            = "vpn-gateway"
   image_storage_locations = [var.region]
 
-  machine_type = "e2-micro"
+  machine_type = "e2-standard-2"
   disk_size    = 10
   ssh_username = "ubuntu"
 }
