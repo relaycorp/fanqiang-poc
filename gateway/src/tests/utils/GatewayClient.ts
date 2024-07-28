@@ -3,7 +3,8 @@ import { WebSocket } from 'ws';
 import { Ipv4Or6Packet } from '../../ip/Ipv4Or6Packet.js';
 import { initPacket } from '../../ip/packets.js';
 
-const GATEWAY_URL = 'ws://localhost:8080';
+const DEFAULT_GATEWAY_URL = 'ws://localhost:8080';
+const GATEWAY_URL = process.env.GATEWAY_URL || DEFAULT_GATEWAY_URL;
 
 async function connectToWsServer(url: string): Promise<WebSocket> {
   return new Promise<WebSocket>((resolve, reject) => {
@@ -22,6 +23,10 @@ async function connectToWsServer(url: string): Promise<WebSocket> {
     }
 
     ws.once('error', handleError);
+
+    ws.once('close', (code, reason) => {
+      console.log(`Connection closed: ${code} ${reason.toString()}`);
+    });
   });
 }
 

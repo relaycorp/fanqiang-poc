@@ -68,21 +68,51 @@ using a Let's Encrypt certificate automatically provisioned by the web server (C
 
 ### Prerequisites
 
-- A project on GCP.
+- A **new** project on GCP. You'll delete it when you're done.
 - The `gcloud` CLI tool installed and configured.
 - HashiCorp [Packer](https://www.packer.io) installed.
 - A DNSSEC-enabled domain name for which you can create DNS records.
 
 ### Build VM instance image
 
-1. Create a Packer variable file at `custom-image/image.auto.pkrvars.hcl` with the following contents:
+1. Create a Packer variable file at `custom-image/image.auto.pkrvars.hcl`, and specify the GCP project id and region:
 
    ```hcl
-   project_id = "your-gcp-project-id"
-   region = "us-central1"
+   project_id = "GCP_PROJECT_ID"
+   region = "GCP_REGION" # E.g. europe-southwest1
    ```
 
 2. Run `packer build .` from the `custom-image` subdirectory.
+
+### Deploy VM instance
+
+You must configure the firewall rules the first time you deploy the server:
+
+```bash
+dev-bin/configure-firewall.sh GCP_PROJECT_ID
+```
+
+Once the firewall rules are configured, follow the steps below each time you wish to deploy a server in the same project:
+
+1. Deploy the server, replacing the placeholder arguments with your own:
+
+   ```bash
+   dev-bin/deploy-to-gcp.sh \
+      GCP_PROJECT_ID \
+      GCP_REGION \
+      DOMAIN_NAME \
+      IMAGE_NAME
+   ```
+
+   Replace `IMAGE_NAME` with the name of the image you built with Packer.
+
+2. Add the DNS `A` record for the `EXTERNAL_IP` output by `deploy-to-gcp.sh`.
+
+To test the server, run:
+
+```bash
+GATEWAY_URL=wss://DOMAIN_NAME npm run ping 1.1.1.1
+```
 
 ## Copyright notes
 
