@@ -5,8 +5,6 @@ export abstract class IpAddress<T extends IpAddress<T>> {
 
   public abstract toString(): string;
 
-  public abstract clone(): T;
-
   public equals(other: IpAddress<any>): boolean {
     return this.buffer.equals(other.buffer);
   }
@@ -19,9 +17,5 @@ export abstract class IpAddress<T extends IpAddress<T>> {
     return is_ip_private(addressString)!!;
   }
 
-  protected cloneBuffer(): Buffer {
-    const newBuffer = Buffer.allocUnsafe(this.buffer.length);
-    this.buffer.copy(newBuffer);
-    return newBuffer;
-  }
+  public abstract isAssignable(): boolean;
 }

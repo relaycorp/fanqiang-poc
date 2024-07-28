@@ -5,13 +5,12 @@ The VPN Gateway is a server that forwards packets between a WebSockets-based tun
 ## Architecture
 
 Instead of implementing a user-space, port-restricted cone NAT,
-the gateway delegates the bulk of the NAT functionality to the Linux kernel for
+the gateway delegates the NAT functionality to the Linux kernel for
 expediency, simplicity, security, performance and robustness.
 
 A caveat to this is that,
 to prevent spoofing attacks,
-we must allocate each client a dedicated TUN interface and respective subnet,
-and implement a trivial _source NAT_ in user-space.
+we must allocate each client a dedicated TUN interface and respective subnet.
 This places a limit on the number of simultaneous clients,
 which this PoC caps at 5 for simplicity;
 in practice,
@@ -22,12 +21,6 @@ although in production we'll want to keep the allocation for a few more seconds 
 (they may have just switched Wi-Fi networks, for example).
 TUN interfaces are created and configured upfront,
 as that requires elevated privileges.
-
-## Implementation notes
-
-- Packets are processed in a mutable manner to keep RAM usage low.
-  For example, when forwarding a packet,
-  its source/destination IP address are rewritten in place to avoid duplicating the packet.
 
 ## Missing features
 

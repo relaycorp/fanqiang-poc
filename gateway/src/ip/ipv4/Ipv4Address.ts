@@ -1,5 +1,11 @@
 import { IpAddress } from '../IpAddress.js';
 
+const NON_ASSIGNABLE_OCTETS = new Set([
+  0, // Network address
+  1, // Gateway address
+  255, // Broadcast address
+]);
+
 export class Ipv4Address extends IpAddress<Ipv4Address> {
   public static readonly OCTETS_LENGTH = 4;
 
@@ -9,6 +15,11 @@ export class Ipv4Address extends IpAddress<Ipv4Address> {
     if (buffer.length !== Ipv4Address.OCTETS_LENGTH) {
       throw new Error('Invalid IPv4 address length');
     }
+  }
+
+  public override isAssignable(): boolean {
+    const lastOctet = this.buffer[Ipv4Address.OCTETS_LENGTH - 1];
+    return !NON_ASSIGNABLE_OCTETS.has(lastOctet);
   }
 
   public toString(): string {
@@ -31,10 +42,5 @@ export class Ipv4Address extends IpAddress<Ipv4Address> {
 
     const buffer = Buffer.from(octets);
     return new Ipv4Address(buffer);
-  }
-
-  override clone() {
-    const newBuffer = this.cloneBuffer();
-    return new Ipv4Address(newBuffer);
   }
 }

@@ -1,13 +1,10 @@
-import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
 import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
 
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
-import { WebsocketTunnel } from './tunnel/WebsocketTunnel.js';
 import { TunInterface } from './tun/TunInterface.js';
 import { Ipv4Or6Packet } from './ip/Ipv4Or6Packet.js';
-import { TunnelConnection } from './nat/TunnelConnection.js';
 import { initPacket } from './ip/packets.js';
 import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
 import { IpPacketValidation } from './ip/IpPacketValidation.js';
@@ -21,8 +18,7 @@ function isPacket(packet: Ipv4Or6Packet | null): packet is Ipv4Or6Packet {
 
 function forwardPacketsFromTunnel(
   wsStream: Duplex,
-  tunnelConnection: TunnelConnection,
-  tunWriteStream: (packets: AsyncIterable<Ipv4Or6Packet>) => Promise<void>,
+  tunInterface: TunInterface,
 ) {
   return pipeline(
     () => wsStream,
@@ -46,10 +42,19 @@ function forwardPacketsFromTunnel(
         return null;
       }
 
+      const sourceAddress = packet.getSourceAddress();
+      if (!tunInterface.subnetContainsAddress(sourceAddress)) {
+        console.log(`✖ T→I: ${packet} (Source is outside interface subnet)`);
+        return null;
+      }
+      if (!sourceAddress.isAssignable()) {
+        console.log(`✖ T→I: ${packet} (Source address is not assignable)`);
+        return null;
+      }
+
       const ipPacketValidation = packet.validate();
       if (ipPacketValidation === IpPacketValidation.VALID) {
         console.log(`✔ T→I: ${packet}`);
-        tunnelConnection.routePacketToInternet(packet);
         return packet;
       }
 
@@ -57,17 +62,16 @@ function forwardPacketsFromTunnel(
       return null;
     }),
     filter(isPacket),
-    tunWriteStream,
+    tunInterface.createWriter(),
   );
 }
 
 async function forwardPacketsFromInternet(
-  tunReader: AsyncIterable<Ipv4Or6Packet>,
-  tunnelConnection: TunnelConnection,
   wsStream: Duplex,
+  tunInterface: TunInterface,
 ) {
   return pipeline(
-    () => tunReader,
+    () => tunInterface.createReader(),
     map((packet) => {
       if (packet instanceof Ipv6Packet) {
         // TODO: Add IPv6 support
@@ -82,14 +86,7 @@ async function forwardPacketsFromInternet(
 
       const ipPacketValidation = packet.validate();
       if (ipPacketValidation === IpPacketValidation.VALID) {
-        const routingSucceeded =
-          tunnelConnection.routePacketFromInternet(packet);
-        if (routingSucceeded) {
-          console.log(`✔ I→T: ${packet}`);
-        } else {
-          console.log(`✖ I→T: ${packet} (error: NAT mapping not found)`);
-          return null;
-        }
+        console.log(`✔ I→T: ${packet}`);
       } else {
         console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
         return null;
@@ -101,10 +98,7 @@ async function forwardPacketsFromInternet(
   );
 }
 
-async function handleConnection(
-  wsClient: WebSocket,
-  wsRequest: IncomingMessage,
-) {
+async function handleConnection(wsClient: WebSocket) {
   let tunInterface: TunInterface;
   try {
     tunInterface = await tunPool.allocateInterface();
@@ -122,20 +116,11 @@ async function handleConnection(
     tunPool.releaseInterface(tunInterface);
   });
 
-  const tunnel = new WebsocketTunnel(
-    wsClient,
-    wsRequest.socket.remoteAddress!,
-    wsRequest.socket.remotePort!,
-    tunInterface,
-  );
-
   const wsStream = createWebSocketStream(wsClient);
-  const tunReader = tunInterface.createReader();
-  const tunWriter = tunInterface.createWriter();
   wsClient.send(tunInterface.subnet);
   await Promise.all([
-    forwardPacketsFromTunnel(wsStream, tunnel, tunWriter),
-    forwardPacketsFromInternet(tunReader, tunnel, wsStream),
+    forwardPacketsFromTunnel(wsStream, tunInterface),
+    forwardPacketsFromInternet(wsStream, tunInterface),
   ]);
 }
 

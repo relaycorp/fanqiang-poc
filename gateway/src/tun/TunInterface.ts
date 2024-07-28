@@ -1,28 +1,29 @@
 import { open, FileHandle } from 'node:fs/promises';
+import Cidr from 'ip-cidr';
 import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 import { tunAlloc } from './tunWrapper.js';
 import { initPacket } from '../ip/packets.js';
 import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
-import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv4Or6Address } from '../ip/Ipv4Or6Address.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
-const MAX_ADDRESSES_PER_INTERFACE = 32;
-const SUBNET_MASK = 27; // 32 addresses, including network and gateway
+const SUBNET_MASK = 27;
 
 export class TunInterface {
   private readonly file: FileHandle;
 
-  private readonly addressPrefix: string;
-  private nextAddress: number = 2; // Because 0 and 1 are reserved
+  private readonly subnetCidr: Cidr;
 
   private constructor(
     file: FileHandle,
     public readonly id: number,
   ) {
     this.file = file;
-    this.addressPrefix = `10.0.${100 + id}.`;
+
+    const subnet = `10.0.${100 + id}.0/${SUBNET_MASK}`;
+    this.subnetCidr = new Cidr(subnet);
   }
 
   public static async open(id: number): Promise<TunInterface> {
@@ -66,7 +67,6 @@ export class TunInterface {
       autoClose: false,
     });
     try {
-      // TODO: Handle malformed/invalid packets. Not that it should happen with TUN devices.
       yield* pipeline(() => stream, map(initPacket));
     } catch (error: any) {
       if (error.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
@@ -89,16 +89,11 @@ export class TunInterface {
       );
   }
 
-  public allocateAddress(): Ipv4Address {
-    if (this.nextAddress > MAX_ADDRESSES_PER_INTERFACE) {
-      throw new Error(
-        'No more addresses available in the TUN interface subnet',
-      );
-    }
-    return Ipv4Address.fromString(`${this.addressPrefix}${this.nextAddress++}`);
+  public get subnet(): string {
+    return this.subnetCidr.toString();
   }
 
-  public get subnet(): string {
-    return `${this.addressPrefix}0/${SUBNET_MASK}`;
+  public subnetContainsAddress(address: Ipv4Or6Address): boolean {
+    return this.subnetCidr.contains(address.toString());
   }
 }

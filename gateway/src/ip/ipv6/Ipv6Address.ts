@@ -12,6 +12,10 @@ export class Ipv6Address extends IpAddress<Ipv6Address> {
     }
   }
 
+  public override isAssignable(): boolean {
+    throw new Error('Method not implemented.');
+  }
+
   public toString(): string {
     const hextets = [];
     for (let index = 0; index < Ipv6Address.OCTETS_LENGTH; index += 2) {
@@ -40,10 +44,5 @@ export class Ipv6Address extends IpAddress<Ipv6Address> {
       buffer.writeUInt16BE(hextet, index * 2);
     });
     return new Ipv6Address(buffer);
-  }
-
-  public override clone() {
-    const newBuffer = this.cloneBuffer();
-    return new Ipv6Address(newBuffer);
   }
 }

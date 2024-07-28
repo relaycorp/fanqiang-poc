@@ -12,11 +12,6 @@ export class Ipv6Packet extends IpPacket<Ipv6Address> {
     return this.buffer[HeaderFieldIndex.HOP_LIMIT];
   }
 
-  protected override decrementHopLimit(): void {
-    const hopLimit = this.getHopLimit();
-    this.buffer.writeUInt8(hopLimit - 1, HeaderFieldIndex.HOP_LIMIT);
-  }
-
   override getSourceAddress(): Ipv6Address {
     const addressBuffer = this.buffer.subarray(
       HeaderFieldIndex.SOURCE_ADDRESS,
