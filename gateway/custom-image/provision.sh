@@ -23,7 +23,7 @@ function install_caddy() {
 
 function install_dependencies() {
     apt-get update
-    apt-get install -y python3-setuptools xz-utils build-essential
+    apt-get install -y python3-setuptools xz-utils build-essential iptables
 
     install_nodejs
     install_caddy
@@ -35,7 +35,7 @@ function uninstall_build_dependencies() {
 }
 
 function install_gateway() {
-    useradd -m -s /bin/bash fanqiang
+    useradd --system --create-home fanqiang
     chown -R fanqiang:fanqiang /opt/vpn-gateway
     chmod -R 755 /opt/vpn-gateway
     cd /opt/vpn-gateway
@@ -51,7 +51,8 @@ configure_boot() {
     systemctl daemon-reload
     systemctl enable vpn-gateway.service
     systemctl enable caddy
-    mv /opt/vpn-gateway/configure-networking.sh /var/lib/cloud/scripts/per-boot/configure-networking.sh
+    mv /opt/vpn-gateway/configure-tun.sh /var/lib/cloud/scripts/per-boot/
+    mv /opt/vpn-gateway/configure-caddy.sh /var/lib/cloud/scripts/per-boot/
 }
 
 # Main

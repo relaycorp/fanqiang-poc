@@ -15,4 +15,4 @@ EOF
 }
 
 configure_caddy
-/opt/vpn-gateway/bin/tun up
+systemctl restart caddy

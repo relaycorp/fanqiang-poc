@@ -23,6 +23,20 @@ although in production we'll want to keep the allocation for a few more seconds 
 TUN interfaces are created and configured upfront,
 as that requires elevated privileges.
 
+## Implementation notes
+
+- Packets are processed in a mutable manner to keep RAM usage low.
+  For example, when forwarding a packet,
+  its source/destination IP address are rewritten in place to avoid duplicating the packet.
+
+## Missing features
+
+An eventual production implementation should:
+
+- Configure Netfilter NAT timeouts to values low enough that we can reuse TUN interfaces (and their respective subnets) after a short period of inactivity.
+  See `sudo sysctl -a | grep -E 'nf_.+timeout'`.
+- Use multiple processes to leverage multiple CPU cores.
+
 ## Development
 
 ### Instal
@@ -47,19 +61,28 @@ To start the server, simply run `npm start`.
 
 One way to quickly test the server is to run `npm run ping 1.1.1.1` to ping `1.1.1.1`.
 
-## Implementation notes
+## Deploy to GCP
 
-- Packets are processed in a mutable manner to keep RAM usage low.
-  For example, when forwarding a packet,
-  its source/destination IP address are rewritten in place to avoid duplicating the packet.
+The server is ready to be deployed to a VM instance on Google Cloud Platform (GCP),
+using a Let's Encrypt certificate automatically provisioned by the web server (Caddy).
 
-## Missing features
+### Prerequisites
 
-An eventual production implementation should:
+- A project on GCP.
+- The `gcloud` CLI tool installed and configured.
+- HashiCorp [Packer](https://www.packer.io) installed.
+- A DNSSEC-enabled domain name for which you can create DNS records.
 
-- Configure Netfilter NAT timeouts to values low enough that we can reuse TUN interfaces (and their respective subnets) after a short period of inactivity.
-  See `sudo sysctl -a | grep -E 'nf_.+timeout'`.
-- Use multiple processes to leverage multiple CPU cores.
+### Build VM instance image
+
+1. Create a Packer variable file at `custom-image/image.auto.pkrvars.hcl` with the following contents:
+
+   ```hcl
+   project_id = "your-gcp-project-id"
+   region = "us-central1"
+   ```
+
+2. Run `packer build .` from the `custom-image` subdirectory.
 
 ## Copyright notes
 

@@ -47,11 +47,13 @@ build {
 
   provisioner "file" {
     sources = [
+      "./configure-caddy.sh",
+      "./configure-tun.sh",
+      "./provision.sh",
+      "./vpn-gateway.service",
+
       "../bin",
       "../src",
-      "../custom-image/configure-networking.sh",
-      "../custom-image/provision.sh",
-      "../custom-image/vpn-gateway.service",
       "../package.json",
       "../package-lock.json",
       "../tsconfig.json",
@@ -62,7 +64,7 @@ build {
 
   provisioner "shell" {
     inline = [
-      "sudo bash /opt/vpn-gateway/provision.sh",
+      "sudo /opt/vpn-gateway/provision.sh",
     ]
   }
 }
