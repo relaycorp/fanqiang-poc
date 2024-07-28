@@ -8,8 +8,13 @@ import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
+const MAX_ADDRESSES_PER_INTERFACE = 32;
+const SUBNET_MASK = 27; // 32 addresses, including network and gateway
+
 export class TunInterface {
   private readonly file: FileHandle;
+
+  private readonly addressPrefix: string;
   private nextAddress: number = 2; // Because 0 and 1 are reserved
 
   private constructor(
@@ -17,6 +22,7 @@ export class TunInterface {
     public readonly id: number,
   ) {
     this.file = file;
+    this.addressPrefix = `10.0.${100 + id}.`;
   }
 
   public static async open(id: number): Promise<TunInterface> {
@@ -84,13 +90,15 @@ export class TunInterface {
   }
 
   public allocateAddress(): Ipv4Address {
-    if (this.nextAddress > 254) {
+    if (this.nextAddress > MAX_ADDRESSES_PER_INTERFACE) {
       throw new Error(
         'No more addresses available in the TUN interface subnet',
       );
     }
-    return Ipv4Address.fromString(
-      `10.0.${100 + this.id}.${this.nextAddress++}`,
-    );
+    return Ipv4Address.fromString(`${this.addressPrefix}${this.nextAddress++}`);
+  }
+
+  public get subnet(): string {
+    return `${this.addressPrefix}0/${SUBNET_MASK}`;
   }
 }

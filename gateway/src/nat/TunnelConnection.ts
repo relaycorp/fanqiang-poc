@@ -2,8 +2,6 @@ import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
 import { Ipv4Packet } from '../ip/ipv4/Ipv4Packet.js';
 import { TunInterface } from '../tun/TunInterface.js';
 
-const MAX_SOURCE_ADDRESSES_PER_CONNECTION = 32;
-
 export abstract class TunnelConnection {
   protected privateToPublicIpMap: Map<string, Ipv4Address> = new Map();
   protected publicToInternalIpMap: Map<string, Ipv4Address> = new Map();
@@ -23,12 +21,6 @@ export abstract class TunnelConnection {
     const clientAddressStr = clientAddress.toString();
     let tunAddress = this.privateToPublicIpMap.get(clientAddressStr);
     if (tunAddress === undefined) {
-      if (
-        MAX_SOURCE_ADDRESSES_PER_CONNECTION <= this.privateToPublicIpMap.size
-      ) {
-        throw new Error('Maximum number of source NAT mappings reached');
-      }
-
       tunAddress = this.tunInterface.allocateAddress();
       this.privateToPublicIpMap.set(clientAddressStr, tunAddress.clone());
       this.publicToInternalIpMap.set(

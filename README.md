@@ -99,7 +99,14 @@ existing solutions also require the tunnel operator to set up and operate a purp
 worse yet,
 some even require elevated privileges to use sensitive networking capabilities.
 
-## Why create a new VPN protocol
+## Protocol
+
+In this PoC,
+the connection starts with the server sending a WebSockets text frame with the subnet allocated to the client (e.g. `10.0.102.0/27`).
+From then on,
+the client and the server exchange IP packets over the WebSockets connection.
+
+### Why create a new VPN protocol
 
 In principle,
 we're only interested in the tunnelling aspect.

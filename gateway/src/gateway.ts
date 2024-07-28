@@ -132,6 +132,7 @@ async function handleConnection(
   const wsStream = createWebSocketStream(wsClient);
   const tunReader = tunInterface.createReader();
   const tunWriter = tunInterface.createWriter();
+  wsClient.send(tunInterface.subnet);
   await Promise.all([
     forwardPacketsFromTunnel(wsStream, tunnel, tunWriter),
     forwardPacketsFromInternet(tunReader, tunnel, wsStream),

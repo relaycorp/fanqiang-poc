@@ -1,4 +1,4 @@
-import { WebSocket } from 'ws';
+import { type RawData, WebSocket } from 'ws';
 
 import { Ipv4Or6Packet } from '../../ip/Ipv4Or6Packet.js';
 import { initPacket } from '../../ip/packets.js';
@@ -42,7 +42,7 @@ export class GatewayClient {
     return this.ws.readyState === WebSocket.OPEN;
   }
 
-  public async readNextPacket(): Promise<Ipv4Or6Packet> {
+  public async readNextMessage(): Promise<RawData> {
     return new Promise((resolve, reject) => {
       if (!this.isConnectionOpen()) {
         reject(new Error('Connection is not open'));
@@ -50,9 +50,14 @@ export class GatewayClient {
       }
 
       this.ws.once('message', (data) => {
-        resolve(initPacket(data as Buffer));
+        resolve(data);
       });
     });
+  }
+
+  public async readNextPacket(): Promise<Ipv4Or6Packet> {
+    const nextMessage = await this.readNextMessage();
+    return initPacket(nextMessage as Buffer);
   }
 
   public async sendPacket(packet: Ipv4Or6Packet): Promise<void> {

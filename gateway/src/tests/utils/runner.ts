@@ -1,9 +1,8 @@
 import { argv } from 'node:process';
+import Cidr from 'ip-cidr';
 
 import { Ipv4Address } from '../../ip/ipv4/Ipv4Address.js';
 import { GatewayClient } from './GatewayClient.js';
-
-const DEFAULT_SOURCE_ADDRESS_PREFIX = '127.0.1.';
 
 type TestHandler = (
   sourceAddress: Ipv4Address,
@@ -11,10 +10,10 @@ type TestHandler = (
   gatewayClient: GatewayClient,
 ) => Promise<void>;
 
-function generateSourceAddress(): string {
-  // Generate a random octet between 2 and 254
-  const randomOctet = Math.floor(Math.random() * 253 + 2);
-  return `${DEFAULT_SOURCE_ADDRESS_PREFIX}${randomOctet}`;
+function pickAddress(subnet: string): Ipv4Address {
+  const subnetCidr = new Cidr(subnet);
+  const start = subnetCidr.toArray({ from: 2, limit: 1 })[0];
+  return Ipv4Address.fromString(start);
 }
 
 export async function runTest(handler: TestHandler): Promise<void> {
@@ -25,12 +24,12 @@ export async function runTest(handler: TestHandler): Promise<void> {
   }
   const destinationAddress = Ipv4Address.fromString(destinationAddressStr);
 
-  const sourceAddressStr = argv[3] ?? generateSourceAddress();
-  const sourceAddress = Ipv4Address.fromString(sourceAddressStr);
+  const gatewayClient = await GatewayClient.connect();
 
-  await handler(
-    sourceAddress,
-    destinationAddress,
-    await GatewayClient.connect(),
-  );
+  const subnetMessage = await gatewayClient.readNextMessage();
+  const subnet = subnetMessage.toString();
+  console.log('Got subnet:', subnet);
+  const sourceAddress = pickAddress(subnet);
+
+  await handler(sourceAddress, destinationAddress, gatewayClient);
 }
