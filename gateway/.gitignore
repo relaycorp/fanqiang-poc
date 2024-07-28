@@ -1,0 +1,6 @@
+dev-config
+custom-image/*.auto.pkrvars.hcl
+node_modules
+build
+dist
+src/**.js
