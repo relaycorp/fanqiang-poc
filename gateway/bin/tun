@@ -7,7 +7,7 @@ TUN_INTERFACE_COUNT=5
 TUN_SUBNET_PREFIX="10.0"
 TUN_SUBNET="${TUN_SUBNET_PREFIX}.0.0/8"
 
-if [ $# -ne 1 ]; then
+if [ $# -lt 1 ]; then
     echo "Usage: $0 <up|down>" >&2
     exit 1
 fi
@@ -86,12 +86,13 @@ function create_tun_interface() {
     local interface_name="$1"
     local interface_subnet="$2"
     local internet_interface="$3"
+    local interface_owner="$4"
 
     if ip link show "${interface_name}" &> /dev/null; then
         sudo ip link set down dev "${interface_name}"
         sudo ip addr flush dev "${interface_name}"
     else
-        sudo ip tuntap add dev "${interface_name}" mode tun user "${USER}"
+        sudo ip tuntap add dev "${interface_name}" mode tun user "${interface_owner}"
     fi
 
     sudo ip addr add "${interface_subnet}" dev "${interface_name}"
@@ -115,6 +116,8 @@ function delete_tun_interface() {
 }
 
 function set_up() {
+    local interface_owner="${1}"
+
     local internet_interface
     internet_interface="$(get_default_interface)"
 
@@ -135,7 +138,11 @@ function set_up() {
         local interface_name="tun${index}"
         local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/24"
 
-        create_tun_interface "${interface_name}" "${interface_subnet}" "${internet_interface}"
+        create_tun_interface \
+            "${interface_name}" \
+            "${interface_subnet}" \
+            "${internet_interface}" \
+            "${interface_owner}"
     done
 
     echo "Updated routing rules for TUN interfaces"
@@ -175,7 +182,7 @@ function show_status() {
 
 case "$1" in
     up)
-        set_up
+        set_up "${2:-$USER}"
         ;;
     down)
         tear_down
