@@ -51,14 +51,8 @@ function forwardPacketsFromTunnel(
         return null;
       }
 
-      const ipPacketValidation = packet.validate();
-      if (ipPacketValidation === IpPacketValidation.VALID) {
-        console.log(`✔ T→I: ${packet}`);
-        return packet;
-      }
-
-      console.log(`✖ T→I: ${packet} (error: ${ipPacketValidation})`);
-      return null;
+      console.log(`✔ T→I: ${packet}`);
+      return packet;
     }),
     filter(isPacket),
     tunInterface.createWriter(),
