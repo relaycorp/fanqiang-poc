@@ -58,7 +58,8 @@ class MainActivity : ComponentActivity() {
                 value = serverUrl,
                 onValueChange = { serverUrl = it },
                 label = { Text("Server URL") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isVpnRunning,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
