@@ -10,22 +10,29 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import tech.relaycorp.fanqiang.poc.ui.theme.FanQiangTheme
 
+class VpnViewModel : ViewModel() {
+    var isVpnRunning by mutableStateOf(false)
+    var serverUrl by mutableStateOf("wss://gateway5.chores.fans")
+}
+
 class MainActivity : ComponentActivity() {
-    private var isVpnRunning by mutableStateOf(false)
-    private var serverUrl by mutableStateOf("wss://gateway5.chores.fans")
+    private val viewModel: VpnViewModel by viewModels()
 
     private val vpnStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == "VPN_STATUS_UPDATE") {
-                isVpnRunning = intent.getBooleanExtra("IS_RUNNING", false)
+                viewModel.isVpnRunning = intent.getBooleanExtra("IS_RUNNING", false)
             }
         }
     }
@@ -38,7 +45,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    FanQiangContent()
+                    FanQiangContent(viewModel)
                 }
             }
         }
@@ -46,7 +53,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun FanQiangContent() {
+    fun FanQiangContent(viewModel: VpnViewModel = viewModel()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -55,30 +62,30 @@ class MainActivity : ComponentActivity() {
             verticalArrangement = Arrangement.Center
         ) {
             OutlinedTextField(
-                value = serverUrl,
-                onValueChange = { serverUrl = it },
+                value = viewModel.serverUrl,
+                onValueChange = { viewModel.serverUrl = it },
                 label = { Text("Server URL") },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isVpnRunning,
+                enabled = !viewModel.isVpnRunning
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    if (isVpnRunning) {
+                    if (viewModel.isVpnRunning) {
                         stopVpn()
                     } else {
                         requestVpnPermission()
                     }
                 }
             ) {
-                Text(if (isVpnRunning) "Stop VPN" else "Start VPN")
+                Text(if (viewModel.isVpnRunning) "Stop VPN" else "Start VPN")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("VPN Status: ${if (isVpnRunning) "Running" else "Stopped"}")
+            Text("VPN Status: ${if (viewModel.isVpnRunning) "Running" else "Stopped"}")
         }
     }
 
@@ -95,10 +102,10 @@ class MainActivity : ComponentActivity() {
     private fun startVpn() {
         val intent = Intent(this, FanQiangVpnService::class.java).apply {
             action = "START"
-            putExtra("SERVER_URL", serverUrl)
+            putExtra("SERVER_URL", viewModel.serverUrl)
         }
         startService(intent)
-        isVpnRunning = true
+        viewModel.isVpnRunning = true
         Toast.makeText(this, "VPN Service started", Toast.LENGTH_SHORT).show()
     }
 
@@ -107,7 +114,7 @@ class MainActivity : ComponentActivity() {
             action = "STOP"
         }
         startService(intent)
-        isVpnRunning = false
+        viewModel.isVpnRunning = false
         Toast.makeText(this, "VPN Service stopped", Toast.LENGTH_SHORT).show()
     }
 
