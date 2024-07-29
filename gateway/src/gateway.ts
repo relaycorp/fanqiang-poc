@@ -7,7 +7,6 @@ import { TunInterface } from './tun/TunInterface.js';
 import { Ipv4Or6Packet } from './ip/Ipv4Or6Packet.js';
 import { initPacket } from './ip/packets.js';
 import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
-import { IpPacketValidation } from './ip/IpPacketValidation.js';
 
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
@@ -84,13 +83,7 @@ async function forwardPacketsFromInternet(
         return null;
       }
 
-      const ipPacketValidation = packet.validate();
-      if (ipPacketValidation === IpPacketValidation.VALID) {
-        console.log(`✔ I→T: ${packet}`);
-      } else {
-        console.log(`✖ I→T: ${packet} (error: ${ipPacketValidation})`);
-        return null;
-      }
+      console.log(`✔ I→T: ${packet}`);
       return packet.buffer;
     }),
     filter((packetBuffer): packetBuffer is Buffer => packetBuffer !== null),

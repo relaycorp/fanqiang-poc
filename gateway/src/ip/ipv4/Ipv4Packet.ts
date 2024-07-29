@@ -2,7 +2,6 @@ import { InvalidPacketError } from '../InvalidPacketError.js';
 import { IpPacket } from '../IpPacket.js';
 import { calculateChecksum } from '../checksum.js';
 import { Ipv4Address } from './Ipv4Address.js';
-import { IpPacketValidation } from '../IpPacketValidation.js';
 
 const MIN_IPV4_PACKET_LENGTH = 20;
 const MIN_IHL = 5;
@@ -63,17 +62,13 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
 
     const ihl = getIhl(buffer);
     if (ihl < MIN_IHL) {
-      throw new InvalidPacketError('Header is too small');
+      throw new InvalidPacketError('IHL is too small');
     }
 
     const totalLength = buffer.readUInt16BE(HeaderFieldIndex.TOTAL_LENGTH);
     if (buffer.length < totalLength) {
       throw new InvalidPacketError('Buffer is smaller than total length');
     }
-  }
-
-  protected override getHopLimit(): number {
-    return this.buffer[HeaderFieldIndex.TTL];
   }
 
   public override getTransportProtocol(): number {
@@ -120,24 +115,5 @@ export class Ipv4Packet extends IpPacket<Ipv4Address> {
 
   override setDestinationAddress(newIpAddress: Ipv4Address): void {
     newIpAddress.buffer.copy(this.buffer, HeaderFieldIndex.DESTINATION_ADDRESS);
-  }
-
-  protected isChecksumValid(): boolean {
-    const originalChecksum = this.buffer.readUInt16BE(
-      HeaderFieldIndex.CHECKSUM,
-    );
-    this.buffer.writeUInt16BE(0, HeaderFieldIndex.CHECKSUM);
-    const finalChecksum = this.recalculateChecksum();
-    if (originalChecksum !== finalChecksum) {
-      this.buffer.writeUInt16BE(originalChecksum, HeaderFieldIndex.CHECKSUM);
-    }
-    return originalChecksum === finalChecksum;
-  }
-
-  public override validate(): IpPacketValidation {
-    if (!this.isChecksumValid()) {
-      return IpPacketValidation.INVALID_CHECKSUM;
-    }
-    return super.validate();
   }
 }

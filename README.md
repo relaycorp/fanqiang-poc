@@ -102,7 +102,7 @@ some even require elevated privileges to use sensitive networking capabilities.
 ## Protocol
 
 In this PoC,
-the connection starts with the server sending a WebSockets text frame with the subnet allocated to the client (e.g. `10.0.102.0/27`).
+the connection starts with the server sending a WebSockets text frame with the subnet allocated to the client (e.g. `10.0.102.0/24`).
 From then on,
 the client and the server exchange IP packets over the WebSockets connection.
 

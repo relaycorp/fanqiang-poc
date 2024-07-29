@@ -136,7 +136,7 @@ function set_up() {
 
     for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
         local interface_name="tun${index}"
-        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/27"
+        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/24"
 
         create_tun_interface \
             "${interface_name}" \
@@ -155,7 +155,7 @@ function tear_down() {
 
         for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
             local interface_name="tun${index}"
-            local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/27"
+            local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
 
             delete_tun_interface "${interface_name}" "${interface_subnet}" "${internet_interface}"
         done

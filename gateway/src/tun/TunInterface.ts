@@ -1,20 +1,21 @@
-import { open, FileHandle } from 'node:fs/promises';
-import Cidr from 'ip-cidr';
+import { FileHandle, open } from 'node:fs/promises';
 import { map, pipeline, writeToStream } from 'streaming-iterables';
 
 import { tunAlloc } from './tunWrapper.js';
 import { initPacket } from '../ip/packets.js';
 import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
 import { Ipv4Or6Address } from '../ip/Ipv4Or6Address.js';
+import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
+import { Ipv6Address } from '../ip/ipv6/Ipv6Address.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
-const SUBNET_MASK = 27;
+const SUBNET_MASK = 24;
 
 export class TunInterface {
   private readonly file: FileHandle;
 
-  private readonly subnetCidr: Cidr;
+  private readonly ipv4SubnetStartAddress: Ipv4Address;
 
   private constructor(
     file: FileHandle,
@@ -22,8 +23,7 @@ export class TunInterface {
   ) {
     this.file = file;
 
-    const subnet = `10.0.${100 + id}.0/${SUBNET_MASK}`;
-    this.subnetCidr = new Cidr(subnet);
+    this.ipv4SubnetStartAddress = Ipv4Address.fromString(`10.0.${100 + id}.0`);
   }
 
   public static async open(id: number): Promise<TunInterface> {
@@ -90,10 +90,17 @@ export class TunInterface {
   }
 
   public get subnet(): string {
-    return this.subnetCidr.toString();
+    return `${this.ipv4SubnetStartAddress}/${SUBNET_MASK}`;
   }
 
   public subnetContainsAddress(address: Ipv4Or6Address): boolean {
-    return this.subnetCidr.contains(address.toString());
+    if (address instanceof Ipv6Address) {
+      return false;
+    }
+
+    // Compare the first 3 octets of the address, since the mask is /24
+    return this.ipv4SubnetStartAddress.buffer
+      .subarray(0, 3)
+      .equals(address.buffer.subarray(0, 3));
   }
 }

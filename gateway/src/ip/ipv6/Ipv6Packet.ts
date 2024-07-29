@@ -4,13 +4,9 @@ import { Ipv6Address } from './Ipv6Address.js';
 enum HeaderFieldIndex {
   SOURCE_ADDRESS = 8,
   DESTINATION_ADDRESS = 24,
-  HOP_LIMIT = 7,
 }
 
 export class Ipv6Packet extends IpPacket<Ipv6Address> {
-  protected override getHopLimit(): number {
-    return this.buffer[HeaderFieldIndex.HOP_LIMIT];
-  }
 
   override getSourceAddress(): Ipv6Address {
     const addressBuffer = this.buffer.subarray(
