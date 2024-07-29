@@ -25,6 +25,10 @@ export class Ipv6Address extends IpAddress<Ipv6Address> {
     return hextets.join(':');
   }
 
+  public override isPrivate(): boolean {
+    throw new Error('Method not implemented.');
+  }
+
   public static fromString(ipAddress: string): Ipv6Address {
     const hextetStrings = ipAddress.split(':');
     if (hextetStrings.length !== Ipv6Address.HEXTETS_LENGTH) {

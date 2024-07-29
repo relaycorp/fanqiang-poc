@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "ip-cidr": "^4.0.2",
-    "private-ip": "^3.0.2",
     "streaming-iterables": "^8.0.1",
     "ws": "^8.18.0"
   },
