@@ -16,7 +16,7 @@ GCP_SA="$(gcloud iam service-accounts list \
     --filter="email:compute@developer.gserviceaccount.com" \
     --format="value(email)")"
 
-INSTANCE_TYPE="e2-micro"
+INSTANCE_TYPE="e2-standard-2"
 
 echo "Creating instance ${INSTANCE_NAME}..."
 
