@@ -26,23 +26,24 @@ function makePing(sourceAddress: Ipv4Address, destinationAddress: Ipv4Address) {
   );
 }
 
-await runTest(async (sourceAddress, destinationAddress, gatewayClient) => {
-  while (true) {
-    const ping = makePing(sourceAddress, destinationAddress);
-    const startTime = hrtime.bigint();
-    await gatewayClient.sendPacket(ping);
-    console.log(`↑ ${ping}`);
+await runTest(
+  async (sourceAddress, destinationAddress, gatewayClient, logger) => {
+    while (true) {
+      const ping = makePing(sourceAddress, destinationAddress);
+      const startTime = hrtime.bigint();
+      await gatewayClient.sendPacket(ping);
+      logger.info({ packet: ping }, 'Sent ping');
 
-    const pong = await gatewayClient.readNextPacket();
-    const endTime = hrtime.bigint();
-    const elapsedMs = Number(endTime - startTime) / 1_000_000;
-    const pongInfo = `${pong} (${elapsedMs.toFixed(2)}ms)`;
-    if (sourceAddress.equals(pong.getDestinationAddress())) {
-      console.log(`↓ ${pongInfo}`);
-    } else {
-      console.log(`✗ Invalid destination: ${pongInfo}`);
+      const pong = await gatewayClient.readNextPacket();
+      const endTime = hrtime.bigint();
+      const elapsedMs = Number(endTime - startTime) / 1_000_000;
+      if (sourceAddress.equals(pong.getDestinationAddress())) {
+        logger.info({ packet: pong, elapsedMs }, 'Received pong');
+      } else {
+        logger.error({ packet: pong }, 'Invalid destination');
+      }
+
+      await setTimeout(PING_INTERVAL_SECONDS * 1_000);
     }
-
-    await setTimeout(PING_INTERVAL_SECONDS * 1_000);
-  }
-});
+  },
+);

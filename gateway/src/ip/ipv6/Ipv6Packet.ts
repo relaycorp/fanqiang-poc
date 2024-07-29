@@ -7,7 +7,6 @@ enum HeaderFieldIndex {
 }
 
 export class Ipv6Packet extends IpPacket<Ipv6Address> {
-
   override getSourceAddress(): Ipv6Address {
     const addressBuffer = this.buffer.subarray(
       HeaderFieldIndex.SOURCE_ADDRESS,

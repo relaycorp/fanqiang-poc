@@ -1,4 +1,5 @@
 import { type RawData, WebSocket } from 'ws';
+import { Logger } from 'pino';
 
 import { Ipv4Or6Packet } from '../../ip/Ipv4Or6Packet.js';
 import { initPacket } from '../../ip/packets.js';
@@ -6,7 +7,10 @@ import { initPacket } from '../../ip/packets.js';
 const DEFAULT_GATEWAY_URL = 'ws://localhost:8080';
 const GATEWAY_URL = process.env.GATEWAY_URL || DEFAULT_GATEWAY_URL;
 
-async function connectToWsServer(url: string): Promise<WebSocket> {
+async function connectToWsServer(
+  url: string,
+  logger: Logger,
+): Promise<WebSocket> {
   return new Promise<WebSocket>((resolve, reject) => {
     const ws = new WebSocket(url);
 
@@ -25,7 +29,7 @@ async function connectToWsServer(url: string): Promise<WebSocket> {
     ws.once('error', handleError);
 
     ws.once('close', (code, reason) => {
-      console.log(`Connection closed: ${code} ${reason.toString()}`);
+      logger.info(`Connection closed: ${code} ${reason.toString()}`);
     });
   });
 }
@@ -33,8 +37,8 @@ async function connectToWsServer(url: string): Promise<WebSocket> {
 export class GatewayClient {
   protected constructor(protected readonly ws: WebSocket) {}
 
-  public static async connect(): Promise<GatewayClient> {
-    const ws = await connectToWsServer(GATEWAY_URL);
+  public static async connect(logger: Logger): Promise<GatewayClient> {
+    const ws = await connectToWsServer(GATEWAY_URL, logger);
     return new GatewayClient(ws);
   }
 

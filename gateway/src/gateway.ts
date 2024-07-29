@@ -1,4 +1,6 @@
 import type { Duplex } from 'node:stream';
+import { IncomingMessage } from 'node:http';
+import { Logger } from 'pino';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
 import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
 
@@ -7,6 +9,7 @@ import { TunInterface } from './tun/TunInterface.js';
 import { Ipv4Or6Packet } from './ip/Ipv4Or6Packet.js';
 import { initPacket } from './ip/packets.js';
 import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
+import { createLogger } from './utils/logging.js';
 
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
@@ -18,6 +21,7 @@ function isPacket(packet: Ipv4Or6Packet | null): packet is Ipv4Or6Packet {
 function forwardPacketsFromTunnel(
   wsStream: Duplex,
   tunInterface: TunInterface,
+  logger: Logger,
 ) {
   return pipeline(
     () => wsStream,
@@ -26,32 +30,32 @@ function forwardPacketsFromTunnel(
       try {
         packet = initPacket(packetBuffer);
       } catch (err: any) {
-        console.error('Error parsing IP packet:', err);
+        logger.info({ err }, 'Error parsing IP packet');
         return null;
       }
 
       if (packet instanceof Ipv6Packet) {
         // TODO: Add IPv6 support
-        console.log('✖ T→I: Unsupported IPv6 packet');
+        logger.info({ packet }, 'Unsupported IPv6 packet');
         return null;
       }
 
       if (packet.getDestinationAddress().isPrivate()) {
-        console.log(`✖ T→I: ${packet} (Destination is private address)`);
+        logger.info({ packet }, 'Destination is private address');
         return null;
       }
 
       const sourceAddress = packet.getSourceAddress();
       if (!tunInterface.subnetContainsAddress(sourceAddress)) {
-        console.log(`✖ T→I: ${packet} (Source is outside interface subnet)`);
+        logger.info({ packet }, 'Source is outside interface subnet');
         return null;
       }
       if (!sourceAddress.isAssignable()) {
-        console.log(`✖ T→I: ${packet} (Source address is not assignable)`);
+        logger.info({ packet }, 'Source address is not assignable');
         return null;
       }
 
-      console.log(`✔ T→I: ${packet}`);
+      logger.debug({ packet }, 'Forwarding packet from tunnel to internet');
       return packet;
     }),
     filter(isPacket),
@@ -62,22 +66,26 @@ function forwardPacketsFromTunnel(
 async function forwardPacketsFromInternet(
   wsStream: Duplex,
   tunInterface: TunInterface,
+  logger: Logger,
 ) {
   return pipeline(
     () => tunInterface.createReader(),
     map((packet) => {
       if (packet instanceof Ipv6Packet) {
         // TODO: Add IPv6 support
-        console.log('✖ T→I: Unsupported IPv6 packet');
+        logger.info('Unsupported IPv6 packet');
         return null;
       }
 
       if (packet.getSourceAddress().isPrivate()) {
-        console.log(`✖ I→T: ${packet} (Source is private address)`);
+        logger.info({ packet }, 'Source is private address');
         return null;
       }
 
-      console.log(`✔ I→T: ${packet}`);
+      logger.debug(
+        { packet },
+        'Forwarding packet from the Internet to the tunnel',
+      );
       return packet.buffer;
     }),
     filter((packetBuffer): packetBuffer is Buffer => packetBuffer !== null),
@@ -85,17 +93,28 @@ async function forwardPacketsFromInternet(
   );
 }
 
-async function handleConnection(wsClient: WebSocket) {
+async function handleConnection(
+  wsClient: WebSocket,
+  request: IncomingMessage,
+  logger: Logger,
+) {
+  const connectionAwareLogger = logger.child({
+    client: `${request.socket.remoteAddress}:${request.socket.remotePort}`,
+  });
+  connectionAwareLogger.info('Connection opened');
+
   let tunInterface: TunInterface;
   try {
     tunInterface = await tunPool.allocateInterface();
   } catch (err) {
-    console.error('Failed to allocate TUN interface:', err);
+    connectionAwareLogger.error({ err }, 'Failed to allocate TUN interface');
     wsClient.close(1013, 'No available TUN interfaces');
     return;
   }
 
   wsClient.on('close', async () => {
+    connectionAwareLogger.info('Connection closed');
+
     // TODO: Fix this close() as it's causing the process to hang when exiting
     // Try https://github.com/mafintosh/why-is-node-running
     await tunInterface.close();
@@ -106,26 +125,30 @@ async function handleConnection(wsClient: WebSocket) {
   const wsStream = createWebSocketStream(wsClient);
   wsClient.send(tunInterface.subnet);
   await Promise.all([
-    forwardPacketsFromTunnel(wsStream, tunInterface),
-    forwardPacketsFromInternet(wsStream, tunInterface),
+    forwardPacketsFromTunnel(wsStream, tunInterface, connectionAwareLogger),
+    forwardPacketsFromInternet(wsStream, tunInterface, connectionAwareLogger),
   ]);
 }
 
 async function runServer() {
+  const logger = createLogger();
+
   const server = new WebSocketServer({ host: '127.0.0.1', port: 8080 });
 
   process.on('SIGINT', async () => {
-    console.log('Shutting down...');
+    logger.info('Shutting down...');
     server.close(() => {
-      console.log('WebSocket server closed');
+      logger.info('WebSocket server closed');
       process.exit(0);
     });
   });
 
-  server.on('connection', handleConnection);
+  server.on('connection', async (wsClient, request) => {
+    return handleConnection(wsClient, request, logger);
+  });
 
   server.on('listening', () => {
-    console.log('WebSocket server started on ws://127.0.0.1:8080');
+    logger.info('WebSocket server started');
   });
 }
 

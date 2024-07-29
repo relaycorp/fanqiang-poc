@@ -7,14 +7,16 @@
     "build": "tsc -p tsconfig.json",
     "postbuild": "npm run addons:rebuild",
     "addons:rebuild": "node-gyp rebuild",
-    "start": "tsx src/gateway.ts",
-    "ping": "tsx src/tests/ping.ts",
+    "start": "LOG_LEVEL=debug tsx src/gateway.ts",
+    "ping": "LOG_LEVEL=debug tsx src/tests/ping.ts",
     "ping-cf": "tsx src/tests/ping.ts 1.1.1.1",
     "clean": "del-cli build dist",
     "fix": "prettier --write ."
   },
   "dependencies": {
     "ip-cidr": "^4.0.2",
+    "pino": "^9.3.2",
+    "pino-pretty": "^11.2.2",
     "streaming-iterables": "^8.0.1",
     "ws": "^8.18.0"
   },
