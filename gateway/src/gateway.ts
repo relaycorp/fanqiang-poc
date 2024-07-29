@@ -36,7 +36,7 @@ function forwardPacketsFromTunnel(
 
       if (packet instanceof Ipv6Packet) {
         // TODO: Add IPv6 support
-        logger.info({ packet }, 'Unsupported IPv6 packet');
+        logger.info('Unsupported IPv6 packet');
         return null;
       }
 
