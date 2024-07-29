@@ -16,12 +16,14 @@ GCP_SA="$(gcloud iam service-accounts list \
     --filter="email:compute@developer.gserviceaccount.com" \
     --format="value(email)")"
 
+INSTANCE_TYPE="e2-micro"
+
 echo "Creating instance ${INSTANCE_NAME}..."
 
 gcloud compute instances create "${INSTANCE_NAME}" \
     "--project=${GCP_PROJECT}" \
     "--zone=${GCP_ZONE}" \
-    "--machine-type=e2-micro" \
+    "--machine-type=${INSTANCE_TYPE}" \
     --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
     "--metadata=DOMAIN_NAME=${DOMAIN_NAME},enable-osconfig=TRUE" \
     --maintenance-policy=MIGRATE \
