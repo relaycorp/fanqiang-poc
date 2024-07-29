@@ -1,6 +1,5 @@
 package tech.relaycorp.fanqiang.poc
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -8,6 +7,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
@@ -25,83 +25,103 @@ class FanQiangVpnService : VpnService() {
         install(WebSockets)
     }
 
-    companion object {
-        private const val NOTIFICATION_CHANNEL_ID = "FanQiangVpnChannel"
-        private const val NOTIFICATION_ID = 1
-        private const val TAG = "FanQiangVpnService"
-    }
-
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: ${intent?.action}")
         when (intent?.action) {
-            "START" -> start(intent.getStringExtra("SERVER_URL") ?: "wss://gateway2.chores.fans")
+            "START" -> {
+                val serverUrl = intent.getStringExtra("SERVER_URL")
+                if (serverUrl.isNullOrEmpty()) {
+                    Log.e(TAG, "SERVER_URL is not set")
+                    showNotification("Error: Server URL not set")
+                    notifyActivity(false)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                start(serverUrl)
+            }
             "STOP" -> stop()
+            else -> {
+                Log.e(TAG, "Unknown action: ${intent?.action}")
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
         return START_STICKY
     }
 
     private fun start(serverUrl: String) {
-        val pendingIntent: PendingIntent =
-            Intent(this, MainActivity::class.java).let { notificationIntent ->
-                PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
-            }
-
-        val notification: Notification = Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Fan Qiang VPN")
-            .setContentText("VPN is running")
-            .setSmallIcon(R.drawable.baseline_vpn_lock_24)
-            .setContentIntent(pendingIntent)
-            .build()
-
-        startForeground(NOTIFICATION_ID, notification)
+        Log.d(TAG, "Starting VPN service with server URL: $serverUrl")
+        showNotification("Connecting to VPN...")
 
         connectionJob = CoroutineScope(Dispatchers.IO).launch {
-            connectToServer(serverUrl)
+            try {
+                connectToServer(serverUrl)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in VPN connection", e)
+                showNotification("VPN connection failed")
+                notifyActivity(false)
+            }
         }
     }
 
     private fun stop() {
+        Log.d(TAG, "Stopping VPN service")
         connectionJob?.cancel()
+        closeVpnInterface()
         stopForeground(true)
+        notifyActivity(false)
         stopSelf()
     }
 
     private suspend fun connectToServer(serverUrl: String) {
-        try {
-            httpClient.wss(urlString = serverUrl) {
-                val subnet = receiveSubnet()
-                setupVpnInterface(subnet)
+        Log.d(TAG, "Attempting to connect to server: $serverUrl")
+        httpClient.wss(urlString = serverUrl) {
+            Log.d(TAG, "WebSocket connection established")
+            val subnet = receiveSubnet()
+            Log.d(TAG, "Received subnet: $subnet")
+            setupVpnInterface(subnet)
+            showNotification("VPN Connected")
+            notifyActivity(true)
 
-                launch { forwardOutgoingPackets() }
-                forwardIncomingPackets()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in VPN connection", e)
-        } finally {
-            closeVpnInterface()
+            launch { forwardOutgoingPackets() }
+            forwardIncomingPackets()
         }
     }
 
     private suspend fun DefaultClientWebSocketSession.receiveSubnet(): String {
-        val frame = incoming.receive() as? Frame.Text ?: throw IllegalStateException("Expected text frame")
+        val frame = incoming.receive() as Frame.Text
         return frame.readText()
     }
 
     private fun setupVpnInterface(subnet: String) {
-        val address = subnet.substringBefore('/')
-        val prefixLength = subnet.substringAfter('/').toInt()
+        Log.d(TAG, "Setting up VPN interface with subnet: $subnet")
 
-        vpnInterface = Builder()
-            .addAddress(address, prefixLength)
-            .addRoute("0.0.0.0", 0)
-            .establish()
+        // Avoid using the first two addresses
+        val address = subnet.substringBefore('/').substringBeforeLast('.') + ".2"
+        val prefixLength = subnet.substringAfter('/').toInt() + 1
+
+        try {
+            vpnInterface = Builder()
+                .addAddress(address, prefixLength)
+                .addRoute("0.0.0.0", 0)
+                .allowFamily(android.system.OsConstants.AF_INET) // Allow IPv4 traffic
+                .addDisallowedApplication(packageName)  // Exclude this app from the VPN
+                .setSession("FanQiangVPN")
+                .establish()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up VPN interface", e)
+            throw e
+        }
+        Log.d(TAG, "VPN interface established successfully")
     }
 
     private suspend fun DefaultClientWebSocketSession.forwardOutgoingPackets() {
+        Log.d(TAG, "Starting to forward outgoing packets")
         val inputStream = FileInputStream(vpnInterface?.fileDescriptor)
         val buffer = ByteArray(Short.MAX_VALUE.toInt())
 
@@ -114,6 +134,7 @@ class FanQiangVpnService : VpnService() {
     }
 
     private suspend fun DefaultClientWebSocketSession.forwardIncomingPackets() {
+        Log.d(TAG, "Starting to forward incoming packets")
         val outputStream = FileOutputStream(vpnInterface?.fileDescriptor)
 
         for (frame in incoming) {
@@ -125,6 +146,7 @@ class FanQiangVpnService : VpnService() {
     }
 
     private fun closeVpnInterface() {
+        Log.d(TAG, "Closing VPN interface")
         vpnInterface?.close()
         vpnInterface = null
     }
@@ -137,5 +159,35 @@ class FanQiangVpnService : VpnService() {
         )
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun showNotification(status: String) {
+        Log.d(TAG, "Showing notification with status: $status")
+        val pendingIntent: PendingIntent =
+            Intent(this, MainActivity::class.java).let { notificationIntent ->
+                PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
+            }
+
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Fan Qiang VPN")
+            .setContentText(status)
+            .setSmallIcon(R.drawable.baseline_vpn_lock_24)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        startForeground(NOTIFICATION_ID, notification)
+    }
+
+    private fun notifyActivity(isRunning: Boolean) {
+        val intent = Intent("VPN_STATUS_UPDATE").apply {
+            putExtra("IS_RUNNING", isRunning)
+        }
+        sendBroadcast(intent)
+    }
+
+    companion object {
+        private const val NOTIFICATION_CHANNEL_ID = "FanQiangVpnChannel"
+        private const val NOTIFICATION_ID = 1
+        private const val TAG = "FanQiangVpnService"
     }
 }
