@@ -5,7 +5,8 @@ set -o pipefail
 
 TUN_INTERFACE_COUNT=5
 TUN_SUBNET_PREFIX="10.0"
-TUN_SUBNET="${TUN_SUBNET_PREFIX}.100.0/20"
+TUN_SUBNET_MASK="20"
+TUN_SUBNET="${TUN_SUBNET_PREFIX}.100.0/${TUN_SUBNET_MASK}"
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <up|down>" >&2
@@ -90,12 +91,12 @@ function create_tun_interface() {
 
     if ip link show "${interface_name}" &> /dev/null; then
         sudo ip link set down dev "${interface_name}"
-        sudo ip addr flush dev "${interface_name}"
+        sudo ip address flush dev "${interface_name}"
     else
         sudo ip tuntap add dev "${interface_name}" mode tun user "${interface_owner}"
     fi
 
-    sudo ip addr add "${interface_subnet}" dev "${interface_name}"
+    sudo ip address add "${interface_subnet}" dev "${interface_name}"
     sudo ip link set up dev "${interface_name}"
 
     echo "Configured ${interface_name} with ${interface_subnet}"
@@ -136,7 +137,7 @@ function set_up() {
 
     for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
         local interface_name="tun${index}"
-        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/24"
+        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/${TUN_SUBNET_MASK}"
 
         create_tun_interface \
             "${interface_name}" \
@@ -155,7 +156,7 @@ function tear_down() {
 
         for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
             local interface_name="tun${index}"
-            local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/24"
+            local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/${TUN_SUBNET_MASK}"
 
             delete_tun_interface "${interface_name}" "${interface_subnet}" "${internet_interface}"
         done
