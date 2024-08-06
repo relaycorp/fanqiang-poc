@@ -1,8 +1,7 @@
-import type { Duplex } from 'node:stream';
 import { IncomingMessage } from 'node:http';
 import { Logger } from 'pino';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
-import { pipeline } from 'node:stream/promises';
+import { Transform } from 'node:stream';
 
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { TunInterface } from './tun/TunInterface.js';
@@ -14,81 +13,71 @@ import { createLogger } from './utils/logging.js';
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
 
-function forwardPacketsFromTunnel(
-  wsStream: Duplex,
+function createTunnelToInternetTransform(
   tunInterface: TunInterface,
   logger: Logger,
 ) {
-  const writer = tunInterface.createWriter();
-  return pipeline(
-    wsStream,
-    async function* (source) {
-      for await (const chunk of source) {
-        let packet: Ipv4Or6Packet;
-        try {
-          packet = initPacket(chunk as Buffer);
-        } catch (err: any) {
-          logger.info({ err }, 'Error parsing IP packet');
-          continue;
-        }
-
-        if (packet instanceof Ipv6Packet) {
-          // TODO: Add IPv6 support
-          logger.info('Unsupported IPv6 packet');
-          continue;
-        }
-
-        if (packet.getDestinationAddress().isPrivate()) {
-          logger.info({ packet }, 'Destination is private address');
-          continue;
-        }
-
-        const sourceAddress = packet.getSourceAddress();
-        if (!tunInterface.subnetContainsAddress(sourceAddress)) {
-          logger.info({ packet }, 'Source is outside interface subnet');
-          continue;
-        }
-        if (!sourceAddress.isAssignable()) {
-          logger.info({ packet }, 'Source address is not assignable');
-          continue;
-        }
-
-        logger.debug({ packet }, 'Forwarding packet from tunnel to internet');
-        yield packet;
+  return new Transform({
+    objectMode: true,
+    transform(chunk: Buffer, _encoding, callback) {
+      let packet: Ipv4Or6Packet;
+      try {
+        packet = initPacket(chunk);
+      } catch (err) {
+        logger.info({ err }, 'Error parsing IP packet');
+        return callback();
       }
+
+      if (packet instanceof Ipv6Packet) {
+        // TODO: Add IPv6 support
+        logger.info('Unsupported IPv6 packet');
+        return callback();
+      }
+
+      if (packet.getDestinationAddress().isPrivate()) {
+        logger.info({ packet }, 'Destination is private address');
+        return callback();
+      }
+
+      const sourceAddress = packet.getSourceAddress();
+      if (!tunInterface.subnetContainsAddress(sourceAddress)) {
+        logger.info({ packet }, 'Source is outside interface subnet');
+        return callback();
+      }
+      if (!sourceAddress.isAssignable()) {
+        logger.info({ packet }, 'Source address is not assignable');
+        return callback();
+      }
+
+      logger.debug({ packet }, 'Forwarding packet from tunnel to internet');
+      this.push(packet);
+      callback();
     },
-    writer,
-  );
+  });
 }
 
-function forwardPacketsFromInternet(
-  wsStream: Duplex,
-  tunInterface: TunInterface,
-  logger: Logger,
-) {
-  return pipeline(
-    tunInterface.createReader(),
-    async function* (source) {
-      for await (const packet of source) {
-        if (packet instanceof Ipv6Packet) {
-          logger.info('Unsupported IPv6 packet');
-          continue;
-        }
-
-        if (packet.getSourceAddress().isPrivate()) {
-          logger.info({ packet }, 'Source is private address');
-          continue;
-        }
-
-        logger.debug(
-          { packet },
-          'Forwarding packet from the Internet to the tunnel',
-        );
-        yield packet.buffer;
+function createInternetToTunnelTransform(logger: Logger) {
+  return new Transform({
+    objectMode: true,
+    transform(packet: Ipv4Or6Packet, _encoding, callback) {
+      if (packet instanceof Ipv6Packet) {
+        logger.info('Unsupported IPv6 packet');
+        return callback();
       }
+
+      if (packet.getSourceAddress().isPrivate()) {
+        logger.info({ packet }, 'Source is private address');
+        return callback();
+      }
+
+      logger.debug(
+        { packet },
+        'Forwarding packet from the Internet to the tunnel',
+      );
+      this.push(packet.buffer);
+      callback();
     },
-    wsStream,
-  );
+  });
 }
 
 async function handleConnection(
@@ -122,10 +111,17 @@ async function handleConnection(
 
   const wsStream = createWebSocketStream(wsClient);
   wsClient.send(tunInterface.subnet);
-  await Promise.all([
-    forwardPacketsFromTunnel(wsStream, tunInterface, connectionAwareLogger),
-    forwardPacketsFromInternet(wsStream, tunInterface, connectionAwareLogger),
-  ]);
+
+  const tunnelToInternetTransform = createTunnelToInternetTransform(
+    tunInterface,
+    connectionAwareLogger,
+  );
+  const internetToTunnelTransform = createInternetToTunnelTransform(
+    connectionAwareLogger,
+  );
+
+  wsStream.pipe(tunnelToInternetTransform).pipe(tunInterface.createWriter());
+  tunInterface.createReader().pipe(internetToTunnelTransform).pipe(wsStream);
 }
 
 async function runServer() {
