@@ -23,7 +23,7 @@ import tech.relaycorp.fanqiang.poc.ui.theme.FanQiangTheme
 
 class VpnViewModel : ViewModel() {
     var isVpnRunning by mutableStateOf(false)
-    var serverUrl by mutableStateOf("wss://gateway5.chores.fans")
+    var serverUrl by mutableStateOf("wss://example.com")
 }
 
 class MainActivity : ComponentActivity() {
