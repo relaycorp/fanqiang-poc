@@ -1,5 +1,5 @@
 import { FileHandle, open } from 'node:fs/promises';
-import { map, pipeline, writeToStream } from 'streaming-iterables';
+import { Readable, Transform, Writable } from 'node:stream';
 
 import { tunAlloc } from './tunWrapper.js';
 import { initPacket } from '../ip/packets.js';
@@ -14,16 +14,18 @@ const SUBNET_MASK = 24;
 
 export class TunInterface {
   private readonly file: FileHandle;
-
   private readonly ipv4SubnetStartAddress: Ipv4Address;
+  private readStream: Readable;
+  private writeStream: Writable;
 
   private constructor(
     file: FileHandle,
     public readonly id: number,
   ) {
     this.file = file;
-
     this.ipv4SubnetStartAddress = Ipv4Address.fromString(`10.0.${100 + id}.0`);
+    this.readStream = this.file.createReadStream({ autoClose: false });
+    this.writeStream = this.file.createWriteStream({ autoClose: false });
   }
 
   public static async open(id: number): Promise<TunInterface> {
@@ -48,6 +50,9 @@ export class TunInterface {
   }
 
   public async close(): Promise<void> {
+    this.readStream.destroy();
+    this.writeStream.destroy();
+
     /*
     TODO: Fix this so it won't hang when there's an outstanding read() but no new packets
 
@@ -62,31 +67,35 @@ export class TunInterface {
     await this.file.close();
   }
 
-  public async *createReader(): AsyncIterable<Ipv4Or6Packet> {
-    const stream = this.file.createReadStream({
-      autoClose: false,
-    });
-    try {
-      yield* pipeline(() => stream, map(initPacket));
-    } catch (error: any) {
-      if (error.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
-        throw error;
-      }
-    }
+  public createReader(): Readable {
+    return this.readStream.pipe(
+      new Transform({
+        objectMode: true,
+        transform: function (chunk: Buffer, _encoding, callback) {
+          let packet: Ipv4Or6Packet;
+          try {
+            packet = initPacket(chunk);
+          } catch (error) {
+            callback(
+              new Error('Failed to initialise packet', { cause: error }),
+            );
+            return;
+          }
+
+          this.push(packet);
+          callback();
+        },
+      }),
+    );
   }
 
-  public createWriter(): (
-    packets: AsyncIterable<Ipv4Or6Packet>,
-  ) => Promise<void> {
-    const stream = this.file.createWriteStream({
-      autoClose: false,
+  public createWriter(): Writable {
+    return new Writable({
+      objectMode: true,
+      write: (packet: Ipv4Or6Packet, _encoding, callback) => {
+        this.writeStream.write(packet.buffer, callback);
+      },
     });
-    return (packets) =>
-      pipeline(
-        () => packets,
-        map((packet) => packet.buffer),
-        writeToStream(stream),
-      );
   }
 
   public get subnet(): string {

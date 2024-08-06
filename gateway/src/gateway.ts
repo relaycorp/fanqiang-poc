@@ -2,7 +2,7 @@ import type { Duplex } from 'node:stream';
 import { IncomingMessage } from 'node:http';
 import { Logger } from 'pino';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
-import { filter, map, pipeline, writeToStream } from 'streaming-iterables';
+import { pipeline } from 'node:stream/promises';
 
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { TunInterface } from './tun/TunInterface.js';
@@ -14,82 +14,80 @@ import { createLogger } from './utils/logging.js';
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
 
-function isPacket(packet: Ipv4Or6Packet | null): packet is Ipv4Or6Packet {
-  return packet !== null;
-}
-
 function forwardPacketsFromTunnel(
   wsStream: Duplex,
   tunInterface: TunInterface,
   logger: Logger,
 ) {
+  const writer = tunInterface.createWriter();
   return pipeline(
-    () => wsStream,
-    map((packetBuffer) => {
-      let packet: Ipv4Or6Packet;
-      try {
-        packet = initPacket(packetBuffer);
-      } catch (err: any) {
-        logger.info({ err }, 'Error parsing IP packet');
-        return null;
-      }
+    wsStream,
+    async function* (source) {
+      for await (const chunk of source) {
+        let packet: Ipv4Or6Packet;
+        try {
+          packet = initPacket(chunk as Buffer);
+        } catch (err: any) {
+          logger.info({ err }, 'Error parsing IP packet');
+          continue;
+        }
 
-      if (packet instanceof Ipv6Packet) {
-        // TODO: Add IPv6 support
-        logger.info('Unsupported IPv6 packet');
-        return null;
-      }
+        if (packet instanceof Ipv6Packet) {
+          // TODO: Add IPv6 support
+          logger.info('Unsupported IPv6 packet');
+          continue;
+        }
 
-      if (packet.getDestinationAddress().isPrivate()) {
-        logger.info({ packet }, 'Destination is private address');
-        return null;
-      }
+        if (packet.getDestinationAddress().isPrivate()) {
+          logger.info({ packet }, 'Destination is private address');
+          continue;
+        }
 
-      const sourceAddress = packet.getSourceAddress();
-      if (!tunInterface.subnetContainsAddress(sourceAddress)) {
-        logger.info({ packet }, 'Source is outside interface subnet');
-        return null;
-      }
-      if (!sourceAddress.isAssignable()) {
-        logger.info({ packet }, 'Source address is not assignable');
-        return null;
-      }
+        const sourceAddress = packet.getSourceAddress();
+        if (!tunInterface.subnetContainsAddress(sourceAddress)) {
+          logger.info({ packet }, 'Source is outside interface subnet');
+          continue;
+        }
+        if (!sourceAddress.isAssignable()) {
+          logger.info({ packet }, 'Source address is not assignable');
+          continue;
+        }
 
-      logger.debug({ packet }, 'Forwarding packet from tunnel to internet');
-      return packet;
-    }),
-    filter(isPacket),
-    tunInterface.createWriter(),
+        logger.debug({ packet }, 'Forwarding packet from tunnel to internet');
+        yield packet;
+      }
+    },
+    writer,
   );
 }
 
-async function forwardPacketsFromInternet(
+function forwardPacketsFromInternet(
   wsStream: Duplex,
   tunInterface: TunInterface,
   logger: Logger,
 ) {
   return pipeline(
-    () => tunInterface.createReader(),
-    map((packet) => {
-      if (packet instanceof Ipv6Packet) {
-        // TODO: Add IPv6 support
-        logger.info('Unsupported IPv6 packet');
-        return null;
-      }
+    tunInterface.createReader(),
+    async function* (source) {
+      for await (const packet of source) {
+        if (packet instanceof Ipv6Packet) {
+          logger.info('Unsupported IPv6 packet');
+          continue;
+        }
 
-      if (packet.getSourceAddress().isPrivate()) {
-        logger.info({ packet }, 'Source is private address');
-        return null;
-      }
+        if (packet.getSourceAddress().isPrivate()) {
+          logger.info({ packet }, 'Source is private address');
+          continue;
+        }
 
-      logger.debug(
-        { packet },
-        'Forwarding packet from the Internet to the tunnel',
-      );
-      return packet.buffer;
-    }),
-    filter((packetBuffer): packetBuffer is Buffer => packetBuffer !== null),
-    writeToStream(wsStream),
+        logger.debug(
+          { packet },
+          'Forwarding packet from the Internet to the tunnel',
+        );
+        yield packet.buffer;
+      }
+    },
+    wsStream,
   );
 }
 
