@@ -5,7 +5,7 @@ set -o pipefail
 
 TUN_INTERFACE_COUNT=5
 TUN_SUBNET_PREFIX="10.0"
-TUN_SUBNET="${TUN_SUBNET_PREFIX}.0.0/8"
+TUN_SUBNET="${TUN_SUBNET_PREFIX}.100.0/20"
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <up|down>" >&2
