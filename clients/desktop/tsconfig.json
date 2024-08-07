@@ -1,0 +1,11 @@
+{
+  "extends": "@relaycorp/shared-config/tsconfig-esm.json",
+  "compilerOptions": {
+    "module": "Node16",
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types", "src/types"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.cjs"]
+}
