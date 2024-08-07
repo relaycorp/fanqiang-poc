@@ -158,5 +158,5 @@ Alternative methods could include:
   Packets would be batched for efficiency.
 
 Naturally,
-the methods above would be used sparingly to avoid detection and because of their lower throughput.
+the methods above would be used sparingly to avoid detection and because of their extremely low throughput.
 It should also be considered whether the method would breach the terms of the underlying service.
