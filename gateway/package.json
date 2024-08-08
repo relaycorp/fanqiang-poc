@@ -10,6 +10,7 @@
     "start": "LOG_LEVEL=debug tsx src/gateway.ts",
     "ping": "LOG_LEVEL=debug tsx src/tests/ping.ts",
     "ping-cf": "tsx src/tests/ping.ts 1.1.1.1",
+    "ping-cf-ipv6": "tsx src/tests/ping.ts 2606:4700:4700::1111",
     "clean": "del-cli build dist",
     "fix": "prettier --write ."
   },

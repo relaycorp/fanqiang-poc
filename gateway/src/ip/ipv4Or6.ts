@@ -27,3 +27,13 @@ export function initPacket(packet: Buffer): Ipv4Or6Packet {
   }
   return new packetConstructor(packet);
 }
+
+export function initAddress(address: string): Ipv4Or6Address {
+  if (address.includes(':')) {
+    return Ipv6Address.fromString(address);
+  } else if (address.includes('.')) {
+    return Ipv4Address.fromString(address);
+  } else {
+    throw new Error(`Invalid IP address format: ${address}`);
+  }
+}

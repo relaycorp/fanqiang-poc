@@ -1,16 +1,16 @@
 import { SubnetSet, TrieNode } from '../subnetSets.js';
 
-const IPV4_BITS = 32;
+const IPV6_BITS = 128;
 
 function getBitForIndex(index: number, ipAddress: number[]) {
-  const byteIndex = Math.floor(index / 8);
-  const bitIndex = 7 - (index % 8);
-  return (ipAddress[byteIndex] >> bitIndex) & 1;
+  const hextetIndex = Math.floor(index / 16);
+  const bitIndex = 15 - (index % 16);
+  return (ipAddress[hextetIndex] >> bitIndex) & 1;
 }
 
-export class Ipv4SubnetSet extends SubnetSet {
+export class Ipv6SubnetSet extends SubnetSet {
   protected add(ipAddress: number[], mask: number): void {
-    if (mask < 0 || IPV4_BITS < mask) {
+    if (mask < 0 || IPV6_BITS < mask) {
       throw new Error(`Invalid subnet mask (${mask})`);
     }
 
@@ -31,7 +31,7 @@ export class Ipv4SubnetSet extends SubnetSet {
   public contains(ipAddress: number[]): boolean {
     let node = this.root;
 
-    for (let index = 0; index < IPV4_BITS; index++) {
+    for (let index = 0; index < IPV6_BITS; index++) {
       if (node.isEndOfSubnet) {
         return true;
       }

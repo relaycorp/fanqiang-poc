@@ -52,7 +52,8 @@ When you no longer need the server, run `bin/tun down`.
 
 To start the server, simply run `npm start`.
 
-One way to quickly test the server is to run `npm run ping 1.1.1.1` to ping `1.1.1.1`.
+One way to quickly test the server is to run `npm run ping 1.1.1.1` to ping `1.1.1.1`,
+or `npm run ping-cf-ipv6` to ping the IPv6 equivalent.
 
 ## Deploy to GCP
 
