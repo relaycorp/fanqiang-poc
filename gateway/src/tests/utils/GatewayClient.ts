@@ -41,7 +41,7 @@ export class GatewayClient {
     return new GatewayClient(ws);
   }
 
-  protected async isConnectionOpen(): Promise<boolean> {
+  protected isConnectionOpen(): boolean {
     return this.ws.readyState === WebSocket.OPEN;
   }
 
@@ -64,14 +64,13 @@ export class GatewayClient {
   }
 
   public async sendPacket(packet: Ipv4Or6Packet): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.isConnectionOpen()) {
-        reject(new Error('Connection is not open'));
-        return;
-      }
+    if (!this.isConnectionOpen()) {
+      throw new Error('Connection is not open');
+    }
 
+    return new Promise((resolve, reject) => {
       this.ws.send(packet.buffer, (cause) => {
-        if (cause) {
+        if (cause && this.isConnectionOpen()) {
           reject(new Error('Failed to send packet', { cause }));
         } else {
           resolve();
