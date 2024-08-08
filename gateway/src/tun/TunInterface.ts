@@ -2,9 +2,7 @@ import { FileHandle, open } from 'node:fs/promises';
 import { Readable, Transform, Writable } from 'node:stream';
 
 import { tunAlloc } from './tunWrapper.js';
-import { initPacket } from '../ip/packets.js';
-import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
-import { Ipv4Or6Address } from '../ip/Ipv4Or6Address.js';
+import { initPacket, Ipv4Or6Address, Ipv4Or6Packet } from '../ip/ipv4Or6.js';
 import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
 import { Ipv6Address } from '../ip/ipv6/Ipv6Address.js';
 

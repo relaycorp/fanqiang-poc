@@ -1,4 +1,4 @@
-import { Ipv4Or6Address } from './Ipv4Or6Address.js';
+import { Ipv4Or6Address } from './ipv4Or6.js';
 
 export abstract class IpPacket<Address extends Ipv4Or6Address> {
   constructor(public buffer: Buffer) {}

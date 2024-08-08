@@ -1,6 +1,11 @@
 import { Ipv4Packet } from './ipv4/Ipv4Packet.js';
 import { Ipv6Packet } from './ipv6/Ipv6Packet.js';
-import { Ipv4Or6Packet } from './Ipv4Or6Packet.js';
+import { Ipv4Address } from './ipv4/Ipv4Address.js';
+import { Ipv6Address } from './ipv6/Ipv6Address.js';
+
+export type Ipv4Or6Packet = Ipv4Packet | Ipv6Packet;
+
+export type Ipv4Or6Address = Ipv4Address | Ipv6Address;
 
 const PACKET_CONSTRUCTOR_BY_VERSION = new Map<
   number,

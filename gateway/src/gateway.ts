@@ -5,8 +5,7 @@ import { Transform } from 'node:stream';
 
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { TunInterface } from './tun/TunInterface.js';
-import { Ipv4Or6Packet } from './ip/Ipv4Or6Packet.js';
-import { initPacket } from './ip/packets.js';
+import { initPacket, Ipv4Or6Packet } from './ip/ipv4Or6.js';
 import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
 import { createLogger } from './utils/logging.js';
 
