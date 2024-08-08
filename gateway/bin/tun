@@ -4,9 +4,14 @@ set -o errexit
 set -o pipefail
 
 TUN_INTERFACE_COUNT=5
-TUN_SUBNET_PREFIX="10.0"
-TUN_SUBNET_MASK="20"
-TUN_SUBNET="${TUN_SUBNET_PREFIX}.100.0/${TUN_SUBNET_MASK}"
+
+# Assign each TUN interface a subnet with 512 addresses (half IPv4, half IPv6)
+TUN_IPV4_SUBNET_PREFIX="10.0"
+TUN_IF_IPV4_SUBNET_MASK="24"
+TUN_IPV4_SUBNET="${TUN_IPV4_SUBNET_PREFIX}.100.0/20"
+TUN_IPV6_SUBNET_PREFIX="fd00:1234"
+TUN_IF_IPV6_SUBNET_MASK="120"
+TUN_IPV6_SUBNET="${TUN_IPV6_SUBNET_PREFIX}::/96"
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <up|down>" >&2
@@ -54,7 +59,11 @@ function get_internet_interface_name() {
 function is_traffic_from_tun_interfaces_masqueraded() {
     local internet_interface="$1"
 
-    if ! sudo iptables --table nat --check POSTROUTING --out-interface "${internet_interface}" --source "${TUN_SUBNET}" --destination 0.0.0.0/0 --jump MASQUERADE 2>>/dev/null; then
+    if ! sudo iptables --table nat --check POSTROUTING --out-interface "${internet_interface}" --source "${TUN_IPV4_SUBNET}" --destination 0.0.0.0/0 --jump MASQUERADE 2>>/dev/null; then
+        return 1
+    fi
+
+    if ! sudo ip6tables --table nat --check POSTROUTING --out-interface "${internet_interface}" --source "${TUN_IPV6_SUBNET}" --destination ::/0 --jump MASQUERADE 2>>/dev/null; then
         return 1
     fi
 
@@ -68,8 +77,15 @@ function masquerade_traffic_from_tun_interfaces() {
         --append POSTROUTING \
         --jump MASQUERADE \
         --out-interface "${internet_interface}" \
-        --source "${TUN_SUBNET}" \
+        --source "${TUN_IPV4_SUBNET}" \
         --destination 0.0.0.0/0
+
+    sudo ip6tables --table nat \
+        --append POSTROUTING \
+        --jump MASQUERADE \
+        --out-interface "${internet_interface}" \
+        --source "${TUN_IPV6_SUBNET}" \
+        --destination ::/0
 }
 
 function drop_masquerading_from_tun_interfaces() {
@@ -79,15 +95,23 @@ function drop_masquerading_from_tun_interfaces() {
         --delete POSTROUTING \
         --jump MASQUERADE \
         --out-interface "${internet_interface}" \
-        --source "${TUN_SUBNET}" \
+        --source "${TUN_IPV4_SUBNET}" \
         --destination 0.0.0.0/0
+
+    sudo ip6tables --table nat \
+        --delete POSTROUTING \
+        --jump MASQUERADE \
+        --out-interface "${internet_interface}" \
+        --source "${TUN_IPV6_SUBNET}" \
+        --destination ::/0
 }
 
 function create_tun_interface() {
     local interface_name="$1"
-    local interface_subnet="$2"
-    local internet_interface="$3"
-    local interface_owner="$4"
+    local interface_ipv4_subnet="$2"
+    local interface_ipv6_subnet="$3"
+    local internet_interface="$4"
+    local interface_owner="$5"
 
     if ip link show "${interface_name}" &> /dev/null; then
         sudo ip link set down dev "${interface_name}"
@@ -96,16 +120,18 @@ function create_tun_interface() {
         sudo ip tuntap add dev "${interface_name}" mode tun user "${interface_owner}"
     fi
 
-    sudo ip address add "${interface_subnet}" dev "${interface_name}"
+    sudo ip address add "${interface_ipv4_subnet}" dev "${interface_name}"
+    sudo ip -6 address add "${interface_ipv6_subnet}" dev "${interface_name}"
     sudo ip link set up dev "${interface_name}"
 
-    echo "Configured ${interface_name} with ${interface_subnet}"
+    echo "Configured ${interface_name} with ${interface_ipv4_subnet} and ${interface_ipv6_subnet}"
 }
 
 function delete_tun_interface() {
     local interface_name="$1"
-    local interface_subnet="$2"
-    local internet_interface="$3"
+    local interface_ipv4_subnet="$2"
+    local interface_ipv6_subnet="$3"
+    local internet_interface="$4"
 
     if ip link show "${interface_name}" &> /dev/null; then
         echo "Deleting ${interface_name}..."
@@ -127,6 +153,11 @@ function set_up() {
         exit 3
     fi
 
+    if ! grep --fixed-strings --quiet "1" "/proc/sys/net/ipv6/conf/${internet_interface}/forwarding"; then
+        echo "Error: IPv6 forwarding is not enabled on ${internet_interface}" >&2
+        exit 3
+    fi
+
     set_internet_interface_name "${internet_interface}"
     if ! is_traffic_from_tun_interfaces_masqueraded "${internet_interface}"; then
         masquerade_traffic_from_tun_interfaces "${internet_interface}"
@@ -137,11 +168,14 @@ function set_up() {
 
     for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
         local interface_name="tun${index}"
-        local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).1/${TUN_SUBNET_MASK}"
+        local interface_ipv4_subnet="${TUN_IPV4_SUBNET_PREFIX}.$(( 100 + index )).1/${TUN_IF_IPV4_SUBNET_MASK}"
+        local interface_ipv6_subnet
+        interface_ipv6_subnet="${TUN_IPV6_SUBNET_PREFIX}::$(printf '%x' "$index"):1/${TUN_IF_IPV6_SUBNET_MASK}"
 
         create_tun_interface \
             "${interface_name}" \
-            "${interface_subnet}" \
+            "${interface_ipv4_subnet}" \
+            "${interface_ipv6_subnet}" \
             "${internet_interface}" \
             "${interface_owner}"
     done
@@ -156,9 +190,11 @@ function tear_down() {
 
         for index in $(seq 0 $((TUN_INTERFACE_COUNT - 1))); do
             local interface_name="tun${index}"
-            local interface_subnet="${TUN_SUBNET_PREFIX}.$(( 100 + index )).0/${TUN_SUBNET_MASK}"
+            local interface_ipv4_subnet="${TUN_IPV4_SUBNET_PREFIX}.$(( 100 + index )).0/${TUN_IF_IPV4_SUBNET_MASK}"
+            local interface_ipv6_subnet
+            interface_ipv6_subnet="${TUN_IPV6_SUBNET_PREFIX}::$(printf '%x' "$index"):1/${TUN_IF_IPV6_SUBNET_MASK}"
 
-            delete_tun_interface "${interface_name}" "${interface_subnet}" "${internet_interface}"
+            delete_tun_interface "${interface_name}" "${interface_ipv4_subnet}" "${interface_ipv6_subnet}" "${internet_interface}"
         done
 
         echo "Removed routing rules for TUN interfaces"
@@ -175,10 +211,14 @@ function tear_down() {
 function show_status() {
     echo "Current routing table:"
     ip route show
+    echo
+    ip -6 route show
 
     echo
     echo "Current iptables NAT rules:"
     sudo iptables --table nat --list POSTROUTING
+    echo
+    sudo ip6tables --table nat --list POSTROUTING
 }
 
 case "$1" in
