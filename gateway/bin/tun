@@ -154,8 +154,8 @@ function set_up() {
     fi
 
     if ! grep --fixed-strings --quiet "1" "/proc/sys/net/ipv6/conf/${internet_interface}/forwarding"; then
-        echo "Error: IPv6 forwarding is not enabled on ${internet_interface}" >&2
-        exit 3
+        # At least on Ubuntu, IPv6 forwarding is disabled by default
+        sudo sysctl -w net.ipv6.conf.all.forwarding=1
     fi
 
     set_internet_interface_name "${internet_interface}"
