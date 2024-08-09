@@ -4,7 +4,7 @@ This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
 an HTTPS-based VPN tunnelling protocol that mitigates:
 
 - **Active probing**, so censors can't detect the use of a proxy or VPN by connecting to the server, like they do in the most advanced censorship systems (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
-- **Enumeration**, so censors can't learn all the proxies and VPN servers, like they can with [Tor](https://github.com/scriptzteam/Tor-Bridges-Collector) and all VPN services (except for self-hosted VPN servers).
+- **Enumeration**, so censors can't learn all the proxies and VPN servers, like they can with [Tor](https://github.com/scriptzteam/Tor-Bridges-Collector) and virtually all VPN services (except for self-hosted VPN servers).
 - **Traffic analysis**, so censors can't reliably determine the likelihood of a packet being part of a proxy or VPN connection by looking at its size, timing, or other characteristics.
 
 In other words,
