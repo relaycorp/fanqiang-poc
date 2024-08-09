@@ -102,7 +102,7 @@ some even require elevated privileges to use sensitive networking capabilities.
 ## Protocol
 
 In this PoC,
-the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/128`).
+the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`).
 From then on,
 the client and the gateway exchange IP packets over the WebSockets connection.
 
