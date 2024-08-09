@@ -82,9 +82,8 @@ class FanQiangVpnService : VpnService() {
         Log.d(TAG, "Attempting to connect to server: $serverUrl")
         httpClient.wss(urlString = serverUrl) {
             Log.d(TAG, "WebSocket connection established")
-            val subnet = receiveSubnet()
-            Log.d(TAG, "Received subnet: $subnet")
-            setupVpnInterface(subnet)
+            val (ipv4Subnet, ipv6Subnet) = receiveSubnet().split(",")
+            setupVpnInterface(ipv4Subnet, ipv6Subnet)
             showNotification("VPN Connected")
             notifyActivity(true)
 
@@ -98,18 +97,31 @@ class FanQiangVpnService : VpnService() {
         return frame.readText()
     }
 
-    private fun setupVpnInterface(subnet: String) {
-        Log.d(TAG, "Setting up VPN interface with subnet: $subnet")
+    private fun setupVpnInterface(ipv4Subnet: String, ipv6Subnet: String) {
+        Log.d(TAG, "Setting up VPN interface with subnets $ipv4Subnet and $ipv6Subnet")
 
         // Avoid using the first two addresses
-        val address = subnet.substringBefore('/').substringBeforeLast('.') + ".2"
-        val prefixLength = subnet.substringAfter('/').toInt() + 1
+        val (ipv4Address, ipv4Mask) = ipv4Subnet.split('/').let {
+            val address = it[0].substringBeforeLast('.') + ".2"
+            val mask = it[1].toInt() + 1
+            Pair(address, mask)
+        }
+        val (ipv6Address, ipv6Mask) = ipv6Subnet.split('/').let {
+            val address = it[0].substringBeforeLast(':') + ":2"
+            val mask = it[1].toInt() + 1
+            Pair(address, mask)
+        }
 
         try {
             vpnInterface = Builder()
-                .addAddress(address, prefixLength)
+                // IPv4
+                .addAddress(ipv4Address, ipv4Mask)
                 .addRoute("0.0.0.0", 0)
-                .allowFamily(android.system.OsConstants.AF_INET) // Allow IPv4 traffic
+
+                // IPv6
+                .addAddress(ipv6Address, ipv6Mask)
+                .addRoute("::", 0)
+
                 .addDisallowedApplication(packageName)  // Exclude this app from the VPN
                 .setSession("FanQiangVPN")
                 .establish()
