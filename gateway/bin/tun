@@ -5,12 +5,12 @@ set -o pipefail
 
 TUN_INTERFACE_COUNT=5
 
-# Assign each TUN interface a subnet with 512 addresses (half IPv4, half IPv6)
+# Assign each TUN interface a subnet
 TUN_IPV4_SUBNET_PREFIX="10.0"
-TUN_IF_IPV4_SUBNET_MASK="24"
+TUN_IF_IPV4_SUBNET_MASK="30"  # 4 addresses; the smallest subnet supported by Windows according to the OpenVPN docs
 TUN_IPV4_SUBNET="${TUN_IPV4_SUBNET_PREFIX}.100.0/20"
 TUN_IPV6_SUBNET_PREFIX="fd00:1234"
-TUN_IF_IPV6_SUBNET_MASK="120"
+TUN_IF_IPV6_SUBNET_MASK="127"  # Two addresses, allowing for NDP to be configured properly
 TUN_IPV6_SUBNET="${TUN_IPV6_SUBNET_PREFIX}::/96"
 
 if [ $# -lt 1 ]; then
@@ -170,7 +170,7 @@ function set_up() {
         local interface_name="tun${index}"
         local interface_ipv4_subnet="${TUN_IPV4_SUBNET_PREFIX}.$(( 100 + index )).1/${TUN_IF_IPV4_SUBNET_MASK}"
         local interface_ipv6_subnet
-        interface_ipv6_subnet="${TUN_IPV6_SUBNET_PREFIX}::$(printf '%x' "$index"):1/${TUN_IF_IPV6_SUBNET_MASK}"
+        interface_ipv6_subnet="${TUN_IPV6_SUBNET_PREFIX}::$(printf '%x' "$index"):0/${TUN_IF_IPV6_SUBNET_MASK}"
 
         create_tun_interface \
             "${interface_name}" \

@@ -31,8 +31,7 @@ export class Ipv6Address extends IpAddress<Ipv6Address> {
   }
 
   public override isAssignable(): boolean {
-    const lastHextet = this.buffer.readUInt16BE(Ipv6Address.OCTETS_LENGTH - 2);
-    return lastHextet !== 0x0001;
+    return true;
   }
 
   public override isPrivate(): boolean {

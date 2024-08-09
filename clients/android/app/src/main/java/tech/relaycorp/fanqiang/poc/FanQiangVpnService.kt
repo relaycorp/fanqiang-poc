@@ -100,15 +100,16 @@ class FanQiangVpnService : VpnService() {
     private fun setupVpnInterface(ipv4Subnet: String, ipv6Subnet: String) {
         Log.d(TAG, "Setting up VPN interface with subnets $ipv4Subnet and $ipv6Subnet")
 
-        // Avoid using the first two addresses
         val (ipv4Address, ipv4Mask) = ipv4Subnet.split('/').let {
+            // Skip the network (0) and gateway (1) addresses.
             val address = it[0].substringBeforeLast('.') + ".2"
-            val mask = it[1].toInt() + 1
+            val mask = 32
             Pair(address, mask)
         }
         val (ipv6Address, ipv6Mask) = ipv6Subnet.split('/').let {
-            val address = it[0].substringBeforeLast(':') + ":2"
-            val mask = it[1].toInt() + 1
+            // Skip the first address (:0) as that appears to be used for NDP.
+            val address = it[0].substringBeforeLast(':') + ":1"
+            val mask = 128
             Pair(address, mask)
         }
 

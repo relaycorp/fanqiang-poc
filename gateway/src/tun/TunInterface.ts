@@ -10,8 +10,8 @@ import { Ipv6SubnetSet } from '../ip/ipv6/Ipv6SubnetSet.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
-const IPV4_SUBNET_MASK = 24;
-const IPV6_SUBNET_MASK = 120;
+const IPV4_SUBNET_MASK = 30;
+const IPV6_SUBNET_MASK = 127;
 
 export class TunInterface {
   private readonly file: FileHandle;

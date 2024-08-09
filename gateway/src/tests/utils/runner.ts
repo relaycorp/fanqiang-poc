@@ -16,7 +16,12 @@ type TestHandler = (
 
 function pickAddress(subnet: string): Ipv4Or6Address {
   const subnetCidr = new Cidr(subnet);
-  const start = subnetCidr.toArray({ from: 2, limit: 1 })[0];
+
+  // If it's an IPv6 subnet, skip the first address as that appears to be used for NDP.
+  // If it's an IPv4 subnet, skip the network (0) and gateway (1) addresses.
+  const offset = subnet.includes(':') ? 1 : 2;
+
+  const start = subnetCidr.toArray({ from: offset, limit: 1 })[0];
   return initAddress(start);
 }
 
