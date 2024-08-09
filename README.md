@@ -102,9 +102,9 @@ some even require elevated privileges to use sensitive networking capabilities.
 ## Protocol
 
 In this PoC,
-the connection starts with the server sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/128`).
+the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/128`).
 From then on,
-the client and the server exchange IP packets over the WebSockets connection.
+the client and the gateway exchange IP packets over the WebSockets connection.
 
 Although not implemented in this PoC,
 the client and gateway will exchange E2E encrypted _noise_ messages of random sizes and at random intervals to mitigate traffic analysis.
