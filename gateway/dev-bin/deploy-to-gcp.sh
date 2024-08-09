@@ -17,6 +17,8 @@ GCP_SA="$(gcloud iam service-accounts list \
     --format="value(email)")"
 
 INSTANCE_TYPE="e2-standard-2"
+NETWORK_NAME='fanqiang'
+SUBNET_NAME='fanqiang-subnet'
 
 echo "Creating instance ${INSTANCE_NAME}..."
 
@@ -24,7 +26,7 @@ gcloud compute instances create "${INSTANCE_NAME}" \
     "--project=${GCP_PROJECT}" \
     "--zone=${GCP_ZONE}" \
     "--machine-type=${INSTANCE_TYPE}" \
-    --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+    "--network-interface=network-tier=PREMIUM,stack-type=IPV4_IPV6,network=${NETWORK_NAME},subnet=${SUBNET_NAME}" \
     "--metadata=DOMAIN_NAME=${DOMAIN_NAME},enable-osconfig=TRUE" \
     --maintenance-policy=MIGRATE \
     --provisioning-model=STANDARD \

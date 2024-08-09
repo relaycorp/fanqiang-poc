@@ -83,7 +83,7 @@ using a Let's Encrypt certificate automatically provisioned by the web server (C
 You must configure the firewall rules the first time you deploy the server:
 
 ```bash
-dev-bin/configure-firewall.sh GCP_PROJECT_ID
+dev-bin/configure-gcp-network.sh GCP_PROJECT_ID GCP_REGION
 ```
 
 Once the firewall rules are configured, follow the steps below each time you wish to deploy a server in the same project:
