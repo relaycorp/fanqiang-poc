@@ -1,0 +1,26 @@
+{
+  "name": "fanqiang-desktop",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/gateway.ts",
+    "clean": "del-cli build dist",
+    "fix": "prettier --write ."
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@relaycorp/shared-config": "^1.14.1",
+    "@types/node": "^20.14.9",
+    "@types/ws": "^8.5.10",
+    "del-cli": "^5.1.0",
+    "prettier": "^3.3.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  },
+  "prettier": "@relaycorp/shared-config/.prettierrc.json"
+}

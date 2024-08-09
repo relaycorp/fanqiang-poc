@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -o nounset
+set -o errexit
+set -o pipefail
+
+TUN_INTERFACE="tun0"
+TUN_SUBNET="10.1.0.1/24"
+FWMARK="1"
+CGROUP_NAME="fanqiang"
+CGROUP_PATH="/sys/fs/cgroup/${CGROUP_NAME}"
+ROUTING_TABLE_NAME="fanqiang"
+ROUTING_TABLE_ID="100"
+IPTABLES_MARK_CHAIN="MARK_VPN_CLIENT"
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <up PID|down>" >&2
+    exit 1
+fi
+
+function configure_routing_table() {
+    if ! grep -q "${ROUTING_TABLE_NAME}" /etc/iproute2/rt_tables; then
+        echo "${ROUTING_TABLE_ID} ${ROUTING_TABLE_NAME}" | sudo tee -a /etc/iproute2/rt_tables > /dev/null
+    fi
+}
+
+function create_tun_interface() {
+    if ! ip link show "${TUN_INTERFACE}" &>/dev/null; then
+        sudo ip tuntap add "${TUN_INTERFACE}" mode tun
+    fi
+}
+
+function configure_tun_interface() {
+    create_tun_interface
+    sudo ip address add "${TUN_SUBNET}" dev "${TUN_INTERFACE}"
+    sudo ip link set up dev "${TUN_INTERFACE}"
+}
+
+function configure_routing_rules() {
+    if ! ip rule show | grep -q "fwmark 0x${FWMARK} lookup main"; then
+        sudo ip rule add fwmark "${FWMARK}" table main priority 100
+    fi
+
+    if ! ip rule show | grep -q "from all lookup ${ROUTING_TABLE_NAME}"; then
+        sudo ip rule add table "${ROUTING_TABLE_NAME}" priority 200
+    fi
+
+    sudo ip route flush table "${ROUTING_TABLE_NAME}"
+    sudo ip route add default dev "${TUN_INTERFACE}" table "${ROUTING_TABLE_NAME}"
+}
+
+function load_iptables_modules() {
+    sudo modprobe iptable_mangle
+    sudo modprobe xt_cgroup
+}
+
+function configure_iptables_rules() {
+    load_iptables_modules
+
+    sudo iptables -t mangle -F "${IPTABLES_MARK_CHAIN}"
+    sudo iptables -t mangle -X "${IPTABLES_MARK_CHAIN}"
+
+    sudo iptables -t mangle -N "${IPTABLES_MARK_CHAIN}"
+    sudo iptables -t mangle -A "${IPTABLES_MARK_CHAIN}" -j MARK --set-mark "${FWMARK}"
+
+    if [ -d "${CGROUP_PATH}" ]; then
+        sudo iptables -t mangle -D OUTPUT -m cgroup --path "${CGROUP_NAME}" \
+            -j "${IPTABLES_MARK_CHAIN}"
+
+        sudo iptables -t mangle -A OUTPUT -m cgroup --path "${CGROUP_NAME}" \
+            -j "${IPTABLES_MARK_CHAIN}"
+    else
+        echo "Error: Cgroup path ${CGROUP_PATH} does not exist" >&2
+        exit 1
+    fi
+}
+
+function configure_cgroup() {
+    local pid="$1"
+
+    sudo mkdir -p "${CGROUP_PATH}"
+    echo "${pid}" | sudo tee "${CGROUP_PATH}/cgroup.procs" > /dev/null
+}
+
+function set_up() {
+    local pid="$1"
+
+    configure_routing_table
+    configure_tun_interface
+    configure_routing_rules
+    configure_cgroup "${pid}"
+    configure_iptables_rules
+
+    echo "VPN client configuration set up successfully."
+}
+
+function remove_routing_table() {
+    sudo sed -i "/${ROUTING_TABLE_NAME}/d" /etc/iproute2/rt_tables
+}
+
+function remove_tun_interface() {
+    if ip link show "${TUN_INTERFACE}" &>/dev/null; then
+        sudo ip link set dev "${TUN_INTERFACE}" down
+        sudo ip tuntap del "${TUN_INTERFACE}" mode tun
+    fi
+}
+
+function remove_routing_rules() {
+    sudo ip rule del fwmark "${FWMARK}" table main 2>/dev/null || true
+    sudo ip rule del table "${ROUTING_TABLE_NAME}" 2>/dev/null || true
+    sudo ip route flush table "${ROUTING_TABLE_NAME}" 2>/dev/null || true
+}
+
+function remove_iptables_rules() {
+    if [ -d "${CGROUP_PATH}" ]; then
+        sudo iptables -t mangle -D OUTPUT -m cgroup --path "${CGROUP_NAME}" \
+            -j "${IPTABLES_MARK_CHAIN}" 2>/dev/null || true
+    fi
+    sudo iptables -t mangle -F "${IPTABLES_MARK_CHAIN}" 2>/dev/null || true
+    sudo iptables -t mangle -X "${IPTABLES_MARK_CHAIN}" 2>/dev/null || true
+}
+
+function remove_cgroup() {
+    if [ -d "${CGROUP_PATH}" ]; then
+        sudo rmdir "${CGROUP_PATH}" 2>/dev/null || true
+    fi
+}
+
+function tear_down() {
+    remove_routing_table
+    remove_tun_interface
+    remove_routing_rules
+    remove_iptables_rules
+    remove_cgroup
+
+    echo "VPN client configuration torn down successfully."
+}
+
+set -x
+
+case "$1" in
+    up)
+        if [ $# -ne 2 ]; then
+            echo "Usage: $0 up <PID>" >&2
+            exit 1
+        fi
+        set_up "$2"
+        ;;
+    down)
+        tear_down
+        ;;
+    *)
+        echo "Usage: $0 <up PID|down>" >&2
+        exit 1
+        ;;
+esac
