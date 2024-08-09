@@ -5,9 +5,7 @@ import { Transform } from 'node:stream';
 
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { TunInterface } from './tun/TunInterface.js';
-import { Ipv4Or6Packet } from './ip/Ipv4Or6Packet.js';
-import { initPacket } from './ip/packets.js';
-import { Ipv6Packet } from './ip/ipv6/Ipv6Packet.js';
+import { initPacket, Ipv4Or6Packet } from './ip/ipv4Or6.js';
 import { createLogger } from './utils/logging.js';
 
 const TUN_INTERFACE_COUNT = 5;
@@ -24,28 +22,34 @@ function createTunnelToInternetTransform(
       try {
         packet = initPacket(chunk);
       } catch (err) {
-        logger.info({ err }, 'Error parsing IP packet');
-        return callback();
-      }
-
-      if (packet instanceof Ipv6Packet) {
-        // TODO: Add IPv6 support
-        logger.info('Unsupported IPv6 packet');
+        logger.info(
+          { err },
+          'Dropping packet from Tunnel: Malformed IP packet',
+        );
         return callback();
       }
 
       if (packet.getDestinationAddress().isPrivate()) {
-        logger.info({ packet }, 'Destination is private address');
+        logger.info(
+          { packet },
+          'Dropping packet from Tunnel: Destination is private',
+        );
         return callback();
       }
 
       const sourceAddress = packet.getSourceAddress();
       if (!tunInterface.subnetContainsAddress(sourceAddress)) {
-        logger.info({ packet }, 'Source is outside interface subnet');
+        logger.info(
+          { packet },
+          'Dropping packet from Tunnel: Source is outside interface subnet',
+        );
         return callback();
       }
       if (!sourceAddress.isAssignable()) {
-        logger.info({ packet }, 'Source address is not assignable');
+        logger.info(
+          { packet },
+          'Dropping packet from Tunnel: Source is not assignable',
+        );
         return callback();
       }
 
@@ -60,13 +64,11 @@ function createInternetToTunnelTransform(logger: Logger) {
   return new Transform({
     objectMode: true,
     transform(packet: Ipv4Or6Packet, _encoding, callback) {
-      if (packet instanceof Ipv6Packet) {
-        logger.info('Unsupported IPv6 packet');
-        return callback();
-      }
-
       if (packet.getSourceAddress().isPrivate()) {
-        logger.info({ packet }, 'Source is private address');
+        logger.info(
+          { packet },
+          'Dropping packet from Internet: Source is private',
+        );
         return callback();
       }
 
@@ -110,7 +112,7 @@ async function handleConnection(
   });
 
   const wsStream = createWebSocketStream(wsClient);
-  wsClient.send(tunInterface.subnet);
+  wsClient.send(`${tunInterface.ipv4Subnet},${tunInterface.ipv6Subnet}`);
 
   const tunnelToInternetTransform = createTunnelToInternetTransform(
     tunInterface,

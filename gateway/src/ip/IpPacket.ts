@@ -1,4 +1,4 @@
-import { Ipv4Or6Address } from './Ipv4Or6Address.js';
+import { Ipv4Or6Address } from './ipv4Or6.js';
 
 export abstract class IpPacket<Address extends Ipv4Or6Address> {
   constructor(public buffer: Buffer) {}
@@ -9,7 +9,7 @@ export abstract class IpPacket<Address extends Ipv4Or6Address> {
   public abstract getDestinationAddress(): Address;
   public abstract setDestinationAddress(newIpAddress: Address): void;
 
-  public abstract getTransportProtocol(): number;
+  public abstract getTransportProtocol(): number | null;
 
   public toString(): string {
     return `${this.getSourceAddress()} → ${this.getDestinationAddress()} (L4 protocol: ${this.getTransportProtocol()})`;

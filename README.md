@@ -14,7 +14,7 @@ TODO.
 ## Scope
 
 The objective of the PoC is to assess the feasibility of the protocol,
-by focusing on the areas in which I personally lack experience (e.g. NATs, TUN devices).
+by focusing on the areas in which I personally lack experience (e.g. NATs, TUN devices, IPv6).
 Consequently,
 those components in which I have extensive experience,
 such as authentication and encryption,

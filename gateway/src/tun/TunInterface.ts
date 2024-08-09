@@ -2,30 +2,53 @@ import { FileHandle, open } from 'node:fs/promises';
 import { Readable, Transform, Writable } from 'node:stream';
 
 import { tunAlloc } from './tunWrapper.js';
-import { initPacket } from '../ip/packets.js';
-import { Ipv4Or6Packet } from '../ip/Ipv4Or6Packet.js';
-import { Ipv4Or6Address } from '../ip/Ipv4Or6Address.js';
+import { initPacket, Ipv4Or6Address, Ipv4Or6Packet } from '../ip/ipv4Or6.js';
 import { Ipv4Address } from '../ip/ipv4/Ipv4Address.js';
 import { Ipv6Address } from '../ip/ipv6/Ipv6Address.js';
+import { Ipv4SubnetSet } from '../ip/ipv4/Ipv4SubnetSet.js';
+import { Ipv6SubnetSet } from '../ip/ipv6/Ipv6SubnetSet.js';
 
 const INTERFACE_PATH = '/dev/net/tun';
 
-const SUBNET_MASK = 24;
+const IPV4_SUBNET_MASK = 24;
+const IPV6_SUBNET_MASK = 120;
 
 export class TunInterface {
   private readonly file: FileHandle;
-  private readonly ipv4SubnetStartAddress: Ipv4Address;
   private readStream: Readable;
   private writeStream: Writable;
+
+  public readonly ipv4Subnet: string;
+  private readonly ipv4SubnetSet: Ipv4SubnetSet;
+
+  public readonly ipv6Subnet: string;
+  private readonly ipv6SubnetSet: Ipv6SubnetSet;
 
   private constructor(
     file: FileHandle,
     public readonly id: number,
   ) {
     this.file = file;
-    this.ipv4SubnetStartAddress = Ipv4Address.fromString(`10.0.${100 + id}.0`);
     this.readStream = this.file.createReadStream({ autoClose: false });
     this.writeStream = this.file.createWriteStream({ autoClose: false });
+
+    const ipv4SubnetStartAddress = Ipv4Address.fromString(`10.0.${100 + id}.0`);
+    this.ipv4Subnet = `${ipv4SubnetStartAddress}/${IPV4_SUBNET_MASK}`;
+    this.ipv4SubnetSet = new Ipv4SubnetSet([
+      {
+        address: Array.from(ipv4SubnetStartAddress.buffer),
+        mask: IPV4_SUBNET_MASK,
+      },
+    ]);
+
+    const ipv6SubnetStartAddress = Ipv6Address.fromString(`fd00:1234::${id}:0`);
+    this.ipv6Subnet = `${ipv6SubnetStartAddress}/${IPV6_SUBNET_MASK}`;
+    this.ipv6SubnetSet = new Ipv6SubnetSet([
+      {
+        address: Array.from(ipv6SubnetStartAddress.buffer),
+        mask: IPV6_SUBNET_MASK,
+      },
+    ]);
   }
 
   public static async open(id: number): Promise<TunInterface> {
@@ -98,18 +121,10 @@ export class TunInterface {
     });
   }
 
-  public get subnet(): string {
-    return `${this.ipv4SubnetStartAddress}/${SUBNET_MASK}`;
-  }
-
   public subnetContainsAddress(address: Ipv4Or6Address): boolean {
-    if (address instanceof Ipv6Address) {
-      return false;
-    }
-
-    // Compare the first 3 octets of the address, since the mask is /24
-    return this.ipv4SubnetStartAddress.buffer
-      .subarray(0, 3)
-      .equals(address.buffer.subarray(0, 3));
+    const addressParts = Array.from(address.buffer);
+    const subnetSet =
+      address instanceof Ipv4Address ? this.ipv4SubnetSet : this.ipv6SubnetSet;
+    return subnetSet.contains(addressParts);
   }
 }

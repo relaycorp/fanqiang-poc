@@ -52,7 +52,8 @@ When you no longer need the server, run `bin/tun down`.
 
 To start the server, simply run `npm start`.
 
-One way to quickly test the server is to run `npm run ping 1.1.1.1` to ping `1.1.1.1`.
+One way to quickly test the server is to run `npm run ping 1.1.1.1` to ping `1.1.1.1`,
+or `npm run ping-cf-ipv6` to ping the IPv6 equivalent.
 
 ## Deploy to GCP
 
@@ -82,7 +83,7 @@ using a Let's Encrypt certificate automatically provisioned by the web server (C
 You must configure the firewall rules the first time you deploy the server:
 
 ```bash
-dev-bin/configure-firewall.sh GCP_PROJECT_ID
+dev-bin/configure-gcp-network.sh GCP_PROJECT_ID GCP_REGION
 ```
 
 Once the firewall rules are configured, follow the steps below each time you wish to deploy a server in the same project:
