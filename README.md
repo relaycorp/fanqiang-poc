@@ -1,10 +1,14 @@
 # Fān Qiáng ("翻墙") Proof of Concept
 
 This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
-a VPN tunnelling protocol that mitigates [active probing](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing),
-[enumeration](https://github.com/scriptzteam/Tor-Bridges-Collector)
-and traffic analysis.
-This PoC turns **any HTTPS website** into a tunnel,
+an HTTPS-based VPN tunnelling protocol that mitigates:
+
+- **Active probing**, so censors can't detect the use of a proxy or VPN by connecting to the server, like they do in the most advanced censorship systems (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
+- **Enumeration**, so censors can't learn all the proxies and VPN servers, like they can with [Tor](https://github.com/scriptzteam/Tor-Bridges-Collector) and all VPN services (except for self-hosted VPN servers).
+- **Traffic analysis**, so censors can't reliably determine the likelihood of a packet being part of a proxy or VPN connection by looking at its size, timing, or other characteristics.
+
+In other words,
+**this PoC can turn any HTTPS website into a tunnel**,
 thus making user traffic pass off as regular web browsing.
 
 ## Demo
@@ -14,12 +18,11 @@ TODO.
 ## Scope
 
 The objective of the PoC is to assess the feasibility of the protocol,
-by focusing on the areas in which I personally lack experience (e.g. NATs, TUN devices, IPv6).
+by focusing on the areas in which I personally lack experience (e.g. NATs, IPv6, TUN interfaces).
 Consequently,
 those components in which I have extensive experience,
 such as authentication and encryption,
 are not implemented in the PoC.
-
 ## Architecture
 
 The main architectural difference between Fān Qiáng and other VPN protocols is that the _VPN server_ is split into two components:
