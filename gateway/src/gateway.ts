@@ -1,86 +1,15 @@
 import { IncomingMessage } from 'node:http';
 import { Logger } from 'pino';
 import { createWebSocketStream, WebSocket, WebSocketServer } from 'ws';
-import { Transform } from 'node:stream';
 
 import { TunInterfacePool } from './tun/TunInterfacePool.js';
 import { TunInterface } from './tun/TunInterface.js';
-import { initPacket, Ipv4Or6Packet } from './ip/ipv4Or6.js';
 import { createLogger } from './utils/logging.js';
+import { InternetToTunnelTransform } from './tunnel/InternetToTunnelTransform.js';
+import { TunnelToInternetTransform } from './tunnel/TunnelToInternetTransform.js';
 
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
-
-function createTunnelToInternetTransform(
-  tunInterface: TunInterface,
-  logger: Logger,
-) {
-  return new Transform({
-    objectMode: true,
-    transform(chunk: Buffer, _encoding, callback) {
-      let packet: Ipv4Or6Packet;
-      try {
-        packet = initPacket(chunk);
-      } catch (err) {
-        logger.info(
-          { err },
-          'Dropping packet from Tunnel: Malformed IP packet',
-        );
-        return callback();
-      }
-
-      if (packet.getDestinationAddress().isPrivate()) {
-        logger.info(
-          { packet },
-          'Dropping packet from Tunnel: Destination is private',
-        );
-        return callback();
-      }
-
-      const sourceAddress = packet.getSourceAddress();
-      if (!tunInterface.subnetContainsAddress(sourceAddress)) {
-        logger.info(
-          { packet },
-          'Dropping packet from Tunnel: Source is outside interface subnet',
-        );
-        return callback();
-      }
-      if (!sourceAddress.isAssignable()) {
-        logger.info(
-          { packet },
-          'Dropping packet from Tunnel: Source is not assignable',
-        );
-        return callback();
-      }
-
-      logger.debug({ packet }, 'Forwarding packet from tunnel to internet');
-      this.push(packet);
-      callback();
-    },
-  });
-}
-
-function createInternetToTunnelTransform(logger: Logger) {
-  return new Transform({
-    objectMode: true,
-    transform(packet: Ipv4Or6Packet, _encoding, callback) {
-      if (packet.getSourceAddress().isPrivate()) {
-        logger.info(
-          { packet },
-          'Dropping packet from Internet: Source is private',
-        );
-        return callback();
-      }
-
-      logger.debug(
-        { packet },
-        'Forwarding packet from the Internet to the tunnel',
-      );
-      this.push(packet.buffer);
-      callback();
-    },
-  });
-}
 
 async function handleConnection(
   wsClient: WebSocket,
@@ -114,15 +43,15 @@ async function handleConnection(
   const wsStream = createWebSocketStream(wsClient);
   wsClient.send(`${tunInterface.ipv4Subnet},${tunInterface.ipv6Subnet}`);
 
-  const tunnelToInternetTransform = createTunnelToInternetTransform(
+  const tunnelToInternetTransform = new TunnelToInternetTransform(
     tunInterface,
     connectionAwareLogger,
   );
-  const internetToTunnelTransform = createInternetToTunnelTransform(
+  wsStream.pipe(tunnelToInternetTransform).pipe(tunInterface.createWriter());
+
+  const internetToTunnelTransform = new InternetToTunnelTransform(
     connectionAwareLogger,
   );
-
-  wsStream.pipe(tunnelToInternetTransform).pipe(tunInterface.createWriter());
   tunInterface.createReader().pipe(internetToTunnelTransform).pipe(wsStream);
 }
 
