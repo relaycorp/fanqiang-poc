@@ -1,19 +1,16 @@
 # Fān Qiáng ("翻墙") Proof of Concept
 
 This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
-an HTTPS-based VPN tunnelling protocol that mitigates:
+a VPN tunnelling protocol that will mitigate:
 
-- **Active probing**, so censors can't detect the use of a proxy or VPN by connecting to the server, like they do in the most advanced censorship systems (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
-- **Enumeration**, so censors can't learn all the proxies and VPN servers, like they can with [Tor](https://github.com/scriptzteam/Tor-Bridges-Collector) and virtually all VPN services (except for self-hosted VPN servers).
-- **Traffic analysis**, so censors can't reliably determine the likelihood of a packet being part of a proxy or VPN connection by looking at its size, timing, or other characteristics.
+- **Active probing**, by using HTTPS websites to obfuscate traffic, as opposed to purpose-built Application Layer protocols that can be easily identified by the most sophisticated firewalls (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
+- **Enumeration**, mostly by offering a trivial and universal method to turn literally any website into a tunnel.
+  This should result in such a high ratio of tunnels to users that it'd be impractical for censors to block them all, unlike [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and virtually all VPN services (except for self-hosted VPN servers).
+- **Fingerprinting**, by making the TLS handshake look like that of a mainstream web browser and the traffic devoid of any VPN-specific patterns.
 
 In other words,
 **this PoC can turn any HTTPS website into a tunnel**,
 thus making user traffic pass off as regular web browsing.
-
-## Demo
-
-TODO.
 
 ## Scope
 
@@ -23,6 +20,7 @@ Consequently,
 those components in which I have extensive experience,
 such as authentication and encryption,
 are not implemented in the PoC.
+
 ## Architecture
 
 The main architectural difference between Fān Qiáng and other VPN protocols is that the _VPN server_ is split into two components:
@@ -57,6 +55,8 @@ sequenceDiagram
 ```
 
 The communication between the client and the tunnel, and between the tunnel and the gateway, is done over TLS.
+Although not implemented in this PoC,
+we'll use a library like [rquest](https://github.com/0x676e67/rquest) to ensure that the [JA4 TLS fingerprint](https://blog.foxio.io/ja4%2B-network-fingerprinting) of the client will match that of a mainstream web browser.
 
 ## How this is different from other HTTPS-based tunnels
 
