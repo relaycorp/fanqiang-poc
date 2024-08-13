@@ -45,15 +45,21 @@ export class GatewayClient {
     return this.ws.readyState === WebSocket.OPEN;
   }
 
-  public async readNextMessage(): Promise<RawData> {
+  public async readNextMessage(logger?: Logger): Promise<RawData> {
     return new Promise((resolve, reject) => {
       if (!this.isConnectionOpen()) {
         reject(new Error('Connection is not open'));
         return;
       }
 
-      this.ws.once('message', (data) => {
-        resolve(data);
+      this.ws.once('message', (data, isBinary) => {
+        const isNoiseMessage = isBinary && (data as Buffer)[0] === 0;
+        logger?.debug({ isNoiseMessage, data: data.toString() }, 'Got message');
+        if (isNoiseMessage) {
+          this.readNextMessage().then(resolve, reject);
+        } else {
+          resolve(data);
+        }
       });
     });
   }

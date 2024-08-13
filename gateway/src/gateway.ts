@@ -7,6 +7,7 @@ import { TunInterface } from './tun/TunInterface.js';
 import { createLogger } from './utils/logging.js';
 import { InternetToTunnelTransform } from './tunnel/InternetToTunnelTransform.js';
 import { TunnelToInternetTransform } from './tunnel/TunnelToInternetTransform.js';
+import { potentiallyDelayOrSendNoise } from './tunnel/handshakeObfuscation.js';
 
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
@@ -41,6 +42,7 @@ async function handleConnection(
   });
 
   const wsStream = createWebSocketStream(wsClient);
+  await potentiallyDelayOrSendNoise(wsClient, connectionAwareLogger);
   wsClient.send(`${tunInterface.ipv4Subnet},${tunInterface.ipv6Subnet}`);
 
   const tunnelToInternetTransform = new TunnelToInternetTransform(

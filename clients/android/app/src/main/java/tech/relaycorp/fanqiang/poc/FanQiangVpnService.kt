@@ -82,7 +82,7 @@ class FanQiangVpnService : VpnService() {
         Log.d(TAG, "Attempting to connect to server: $serverUrl")
         httpClient.wss(urlString = serverUrl) {
             Log.d(TAG, "WebSocket connection established")
-            val (ipv4Subnet, ipv6Subnet) = receiveSubnet().split(",")
+            val (ipv4Subnet, ipv6Subnet) = receiveSubnets()
             setupVpnInterface(ipv4Subnet, ipv6Subnet)
             showNotification("VPN Connected")
             notifyActivity(true)
@@ -92,9 +92,15 @@ class FanQiangVpnService : VpnService() {
         }
     }
 
-    private suspend fun DefaultClientWebSocketSession.receiveSubnet(): String {
-        val frame = incoming.receive() as Frame.Text
-        return frame.readText()
+    private suspend fun DefaultClientWebSocketSession.receiveSubnets(): Pair<String, String> {
+        val frame = incoming.receive()
+        if (frame !is Frame.Text) {
+            Log.d(TAG, "Ignoring noise frame before receiving subnets")
+            return receiveSubnets()
+        }
+        return frame.readText().split(",").let {
+            Pair(it[0], it[1])
+        }
     }
 
     private fun setupVpnInterface(ipv4Subnet: String, ipv6Subnet: String) {

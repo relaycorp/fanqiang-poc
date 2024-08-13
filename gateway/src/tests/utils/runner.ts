@@ -37,7 +37,7 @@ export async function runTest(handler: TestHandler): Promise<void> {
 
   const gatewayClient = await GatewayClient.connect(logger);
 
-  const subnetMessage = await gatewayClient.readNextMessage();
+  const subnetMessage = await gatewayClient.readNextMessage(logger);
   const [ipv4Subnet, ipv6Subnet] = subnetMessage.toString().split(',');
   const subnet =
     destinationAddress instanceof Ipv4Address ? ipv4Subnet : ipv6Subnet;
