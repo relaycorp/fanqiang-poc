@@ -106,9 +106,6 @@ the connection starts with the gateway sending a WebSockets text frame with the 
 From then on,
 the client and the gateway exchange IP packets over the WebSockets connection.
 
-Although not implemented in this PoC,
-the client and gateway will exchange E2E encrypted _noise_ messages of random sizes and at random intervals to mitigate traffic analysis.
-
 ### Why create a new VPN protocol
 
 In principle,
