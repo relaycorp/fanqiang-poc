@@ -5,21 +5,26 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.net.VpnService
-import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.websocket.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.nio.ByteBuffer
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.wss
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import tech.relaycorp.fanqiang.poc.ip.subnet.Ipv4Subnet
+import tech.relaycorp.fanqiang.poc.ip.subnet.Ipv6Subnet
 
 class FanQiangVpnService : VpnService() {
 
-    private var vpnInterface: ParcelFileDescriptor? = null
+    private var vpnInterface: VpnInterface? = null
     private var connectionJob: Job? = null
     private val httpClient = HttpClient(CIO) {
         install(WebSockets)
@@ -44,6 +49,7 @@ class FanQiangVpnService : VpnService() {
                 }
                 start(serverUrl)
             }
+
             "STOP" -> stop()
             else -> {
                 Log.e(TAG, "Unknown action: ${intent?.action}")
@@ -92,47 +98,32 @@ class FanQiangVpnService : VpnService() {
         }
     }
 
-    private suspend fun DefaultClientWebSocketSession.receiveSubnets(): Pair<String, String> {
+    private suspend fun DefaultClientWebSocketSession.receiveSubnets(): Pair<Ipv4Subnet, Ipv6Subnet> {
         val frame = incoming.receive()
         if (frame !is Frame.Text) {
             Log.d(TAG, "Ignoring noise frame before receiving subnets")
             return receiveSubnets()
         }
         return frame.readText().split(",").let {
-            Pair(it[0], it[1])
+            val ipv4Subnet = Ipv4Subnet.fromString(it[0])
+            val ipv6Subnet = Ipv6Subnet.fromString(it[1])
+            Pair(ipv4Subnet, ipv6Subnet)
         }
     }
 
-    private fun setupVpnInterface(ipv4Subnet: String, ipv6Subnet: String) {
+    private fun setupVpnInterface(ipv4Subnet: Ipv4Subnet, ipv6Subnet: Ipv6Subnet) {
         Log.d(TAG, "Setting up VPN interface with subnets $ipv4Subnet and $ipv6Subnet")
 
-        val (ipv4Address, ipv4Mask) = ipv4Subnet.split('/').let {
-            // Skip the network (0) and gateway (1) addresses.
-            val address = it[0].substringBeforeLast('.') + ".2"
-            val mask = 32
-            Pair(address, mask)
-        }
-        val (ipv6Address, ipv6Mask) = ipv6Subnet.split('/').let {
-            // Skip the first address (:0) as that appears to be used for NDP.
-            val address = it[0].substringBeforeLast(':') + ":1"
-            val mask = 128
-            Pair(address, mask)
-        }
-
+        val builder = Builder()
+            .addDisallowedApplication(packageName)  // Exclude this app from the VPN
+            .setSession("FanQiangVPN")
         try {
-            vpnInterface = Builder()
-                // IPv4
-                .addAddress(ipv4Address, ipv4Mask)
-                .addRoute("0.0.0.0", 0)
-
-                // IPv6
-                .addAddress(ipv6Address, ipv6Mask)
-                .addRoute("::", 0)
-
-                .addDisallowedApplication(packageName)  // Exclude this app from the VPN
-                .setSession("FanQiangVPN")
-                .establish()
-        } catch (e: Exception) {
+            vpnInterface = VpnInterface.init(
+                builder,
+                ipv4Subnet,
+                ipv6Subnet,
+            )
+        } catch (e: IllegalArgumentException) {
             Log.e(TAG, "Error setting up VPN interface", e)
             throw e
         }
@@ -141,25 +132,19 @@ class FanQiangVpnService : VpnService() {
 
     private suspend fun DefaultClientWebSocketSession.forwardOutgoingPackets() {
         Log.d(TAG, "Starting to forward outgoing packets")
-        val inputStream = FileInputStream(vpnInterface?.fileDescriptor)
-        val buffer = ByteArray(Short.MAX_VALUE.toInt())
-
-        while (isActive) {
-            val length = inputStream.read(buffer)
-            if (length > 0) {
-                send(Frame.Binary(true, ByteBuffer.wrap(buffer, 0, length)))
+        for (packet in vpnInterface!!.readPackets()) {
+            if (!isActive) {
+                break
             }
+            send(Frame.Binary(true, packet))
         }
     }
 
     private suspend fun DefaultClientWebSocketSession.forwardIncomingPackets() {
         Log.d(TAG, "Starting to forward incoming packets")
-        val outputStream = FileOutputStream(vpnInterface?.fileDescriptor)
-
         for (frame in incoming) {
             if (frame is Frame.Binary) {
-                outputStream.write(frame.data)
-                outputStream.flush()
+                vpnInterface?.writePacket(frame.data)
             }
         }
     }
