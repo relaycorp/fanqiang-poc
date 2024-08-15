@@ -21,6 +21,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import tech.relaycorp.fanqiang.poc.ip.subnet.Ipv4Subnet
 import tech.relaycorp.fanqiang.poc.ip.subnet.Ipv6Subnet
+import tech.relaycorp.fanqiang.poc.tunnel.Obfuscation
 
 class FanQiangVpnService : VpnService() {
 
@@ -88,8 +89,12 @@ class FanQiangVpnService : VpnService() {
         Log.d(TAG, "Attempting to connect to server: $serverUrl")
         httpClient.wss(urlString = serverUrl) {
             Log.d(TAG, "WebSocket connection established")
+
+            launch { sendNoise() }
+
             val (ipv4Subnet, ipv6Subnet) = receiveSubnets()
             setupVpnInterface(ipv4Subnet, ipv6Subnet)
+
             showNotification("VPN Connected")
             notifyActivity(true)
 
@@ -130,13 +135,22 @@ class FanQiangVpnService : VpnService() {
         Log.d(TAG, "VPN interface established successfully")
     }
 
+    private suspend fun DefaultClientWebSocketSession.sendNoise() {
+        while (isActive) {
+            val noise = Obfuscation.delayAndGenerateNoise()
+            Log.d(TAG, "Sending noise...")
+            send(Frame.Binary(true, noise))
+        }
+    }
+
     private suspend fun DefaultClientWebSocketSession.forwardOutgoingPackets() {
         Log.d(TAG, "Starting to forward outgoing packets")
         for (packet in vpnInterface!!.readPackets()) {
             if (!isActive) {
                 break
             }
-            send(Frame.Binary(true, packet))
+            val packetPadded = Obfuscation.padPacket(packet)
+            send(Frame.Binary(true, packetPadded))
         }
     }
 

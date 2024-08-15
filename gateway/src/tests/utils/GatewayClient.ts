@@ -2,6 +2,8 @@ import { type RawData, WebSocket } from 'ws';
 import { Logger } from 'pino';
 
 import { initPacket, Ipv4Or6Packet } from '../../ip/ipv4Or6.js';
+import { padPacket } from '../../tunnel/obfuscation/packets.js';
+import { sendNoiseWhilstOpen } from '../../tunnel/obfuscation/connection.js';
 
 const DEFAULT_GATEWAY_URL = 'ws://localhost:8080';
 const GATEWAY_URL = process.env.GATEWAY_URL || DEFAULT_GATEWAY_URL;
@@ -15,6 +17,7 @@ async function connectToWsServer(
 
     function handleConnection() {
       ws.removeListener('error', handleError);
+      sendNoiseWhilstOpen(ws, logger);
       resolve(ws);
     }
 
@@ -75,7 +78,8 @@ export class GatewayClient {
     }
 
     return new Promise((resolve, reject) => {
-      this.ws.send(packet.buffer, (cause) => {
+      const packetPadded = padPacket(packet.buffer);
+      this.ws.send(packetPadded, (cause) => {
         if (cause && this.isConnectionOpen()) {
           reject(new Error('Failed to send packet', { cause }));
         } else {

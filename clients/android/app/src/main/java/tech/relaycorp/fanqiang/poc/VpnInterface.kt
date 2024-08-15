@@ -37,7 +37,7 @@ class VpnInterface(private val fileDescriptor: ParcelFileDescriptor) {
 
     companion object {
         // TODO: Make variable
-        private const val MTU = 1500
+        const val MTU = 1500
 
         @Throws(IllegalArgumentException::class)
         fun init(

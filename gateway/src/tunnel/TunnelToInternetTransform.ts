@@ -3,6 +3,7 @@ import { Logger } from 'pino';
 
 import { TunInterface } from '../tun/TunInterface.js';
 import { initPacket, type Ipv4Or6Packet } from '../ip/ipv4Or6.js';
+import { unpadPacket } from './obfuscation/packets.js';
 
 export class TunnelToInternetTransform extends Transform {
   constructor(
@@ -13,9 +14,15 @@ export class TunnelToInternetTransform extends Transform {
   }
 
   override _transform(chunk: Buffer, _encoding: string, callback: () => void) {
+    if (chunk.length === 0 || chunk[0] === 0) {
+      this.logger.trace('Skipping noise message from Tunnel');
+      return callback();
+    }
+
+    const packetRaw = unpadPacket(chunk);
     let packet: Ipv4Or6Packet;
     try {
-      packet = initPacket(chunk);
+      packet = initPacket(packetRaw);
     } catch (err) {
       this.logger.info(
         { err },

@@ -7,7 +7,7 @@ import { TunInterface } from './tun/TunInterface.js';
 import { createLogger } from './utils/logging.js';
 import { InternetToTunnelTransform } from './tunnel/InternetToTunnelTransform.js';
 import { TunnelToInternetTransform } from './tunnel/TunnelToInternetTransform.js';
-import { potentiallyDelayOrSendNoise } from './tunnel/handshakeObfuscation.js';
+import { potentiallyDelayOrSendNoise } from './tunnel/obfuscation/handshake.js';
 
 const TUN_INTERFACE_COUNT = 5;
 const tunPool = new TunInterfacePool(TUN_INTERFACE_COUNT);
