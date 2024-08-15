@@ -15,7 +15,12 @@ type TestHandler = (
 ) => Promise<void>;
 
 function pickAddress(subnet: string): Ipv4Or6Address {
-  const subnetCidr = new Cidr(subnet);
+  let subnetCidr;
+  try {
+    subnetCidr = new Cidr(subnet);
+  } catch (err) {
+    throw new Error(`Invalid subnet: ${subnet}`, { cause: err });
+  }
 
   // If it's an IPv6 subnet, skip the first address as that appears to be used for NDP.
   // If it's an IPv4 subnet, skip the network (0) and gateway (1) addresses.

@@ -32,8 +32,8 @@ We do this to circumvent censorship,
 but this architecture is comparable to what VPN providers refer to as _double VPN_ —
 a feature that can improve privacy and mitigate traffic correlation attacks.
 
-The following diagram illustrates the relay of packets between a client (`192.168.0.1`) and an Internet host (`1.1.1.1`),
-via a tunnel (`https://tunnel.example`) and a gateway (`192.0.2.1`, `https://gateway.example`):
+The following diagram illustrates the relay of packets between [a client](./clients) (`192.168.0.1`) and an Internet host (`1.1.1.1`),
+via a tunnel (`https://tunnel.example`) and [a gateway](./gateway) (`192.0.2.1`, `https://gateway.example`):
 
 ```mermaid
 sequenceDiagram
@@ -54,9 +54,11 @@ sequenceDiagram
     note over Client: Decrypt PACKET_2
 ```
 
-The communication between the client and the tunnel, and between the tunnel and the gateway, is done over TLS.
-Although not implemented in this PoC,
-we'll use a library like [rquest](https://github.com/0x676e67/rquest) to ensure that the [JA4 TLS fingerprint](https://blog.foxio.io/ja4%2B-network-fingerprinting) of the client will match that of a mainstream web browser.
+Per the diagram above,
+the communication between the client and the gateway will be E2E encrypted
+(it isn't in this PoC).
+Additionally,
+the communication between the client and the tunnel, and between the tunnel and the gateway, is done over TLS.
 
 ## How this is different from other HTTPS-based tunnels
 
@@ -99,17 +101,27 @@ existing solutions also require the tunnel operator to set up and operate a purp
 worse yet,
 some even require elevated privileges to use sensitive networking capabilities.
 
-## Protocol
+## Obfuscation
+
+We obfuscate the traffic to prevent censors from identifying it as a VPN tunnel,
+and eavesdroppers from gathering metadata about it. We achieve this by:
+
+- Having the client and the gateway exchange _noise_ frames of random sizes and at random intervals.
+  However, the production implementation should produce consistent patterns for any given tunnel -- that is, censors shouldn't observe widely different patterns across connections to the same website.
+- Padding each packet to a random size. The production implementation might batch packets (instead of padding or in addition to it).
+
+The production implementation should also mimic a web browser by:
+
+- Simulating the retrieval of a web page prior to opening a WebSocket connection.
+  The client would open an initial TLS connection with an ALPN of `h2`, get a response, and then make subsequent requests to emulate the retrieval of assets like images and JS files. This pattern should be stable by tunnel, but generally random across tunnels.
+- Mimicking the behaviour of a mainstream browser during a TLS handshake to ensure that its [JA4 TLS fingerprint](https://blog.foxio.io/ja4%2B-network-fingerprinting) will match that of a mainstream web browser. We'll have to use a library like [rquest](https://github.com/0x676e67/rquest).
+
+## VPN protocol
 
 In this PoC,
 the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`).
 From then on,
 the client and the gateway exchange IP packets over the WebSockets connection.
-
-Although not implemented in this PoC,
-the client and gateway will exchange E2E encrypted _noise_ messages of random sizes and at random intervals to mitigate traffic analysis.
-
-### Why create a new VPN protocol
 
 In principle,
 we're only interested in the tunnelling aspect.
