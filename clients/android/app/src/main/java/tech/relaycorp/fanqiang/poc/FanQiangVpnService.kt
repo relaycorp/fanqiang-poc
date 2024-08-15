@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import tech.relaycorp.fanqiang.poc.ip.subnet.Ipv4Subnet
 import tech.relaycorp.fanqiang.poc.ip.subnet.Ipv6Subnet
 import tech.relaycorp.fanqiang.poc.tunnel.Obfuscation
+import java.nio.charset.Charset
 
 class FanQiangVpnService : VpnService() {
 
@@ -105,11 +106,12 @@ class FanQiangVpnService : VpnService() {
 
     private suspend fun DefaultClientWebSocketSession.receiveSubnets(): Pair<Ipv4Subnet, Ipv6Subnet> {
         val frame = incoming.receive()
-        if (frame !is Frame.Text) {
+        if (Obfuscation.isNoiseMessage(frame.data)) {
             Log.d(TAG, "Ignoring noise frame before receiving subnets")
             return receiveSubnets()
         }
-        return frame.readText().split(",").let {
+        val serverHello = Obfuscation.unpadMessage(frame.data)
+        return serverHello.toString(Charset.defaultCharset()).split(",").let {
             val ipv4Subnet = Ipv4Subnet.fromString(it[0])
             val ipv6Subnet = Ipv6Subnet.fromString(it[1])
             Pair(ipv4Subnet, ipv6Subnet)
@@ -138,7 +140,6 @@ class FanQiangVpnService : VpnService() {
     private suspend fun DefaultClientWebSocketSession.sendNoise() {
         while (isActive) {
             val noise = Obfuscation.delayAndGenerateNoise()
-            Log.d(TAG, "Sending noise...")
             send(Frame.Binary(true, noise))
         }
     }
@@ -149,7 +150,7 @@ class FanQiangVpnService : VpnService() {
             if (!isActive) {
                 break
             }
-            val packetPadded = Obfuscation.padPacket(packet)
+            val packetPadded = Obfuscation.padMessage(packet)
             send(Frame.Binary(true, packetPadded))
         }
     }
@@ -157,8 +158,9 @@ class FanQiangVpnService : VpnService() {
     private suspend fun DefaultClientWebSocketSession.forwardIncomingPackets() {
         Log.d(TAG, "Starting to forward incoming packets")
         for (frame in incoming) {
-            if (frame is Frame.Binary) {
-                vpnInterface?.writePacket(frame.data)
+            if (!Obfuscation.isNoiseMessage(frame.data)) {
+                val packet = Obfuscation.unpadMessage(frame.data)
+                vpnInterface?.writePacket(packet)
             }
         }
     }

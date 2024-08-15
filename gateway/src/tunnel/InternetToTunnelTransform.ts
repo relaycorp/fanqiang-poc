@@ -2,6 +2,7 @@ import { Transform } from 'node:stream';
 import { Logger } from 'pino';
 
 import type { Ipv4Or6Packet } from '../ip/ipv4Or6.js';
+import { padMessage } from './obfuscation/messages.js';
 
 export class InternetToTunnelTransform extends Transform {
   constructor(protected readonly logger: Logger) {
@@ -25,7 +26,8 @@ export class InternetToTunnelTransform extends Transform {
       { packet },
       'Forwarding packet from the Internet to the tunnel',
     );
-    this.push(packet.buffer);
+    const packetPadded = padMessage(packet.buffer);
+    this.push(packetPadded);
     callback();
   }
 }

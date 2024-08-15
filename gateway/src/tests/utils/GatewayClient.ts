@@ -1,8 +1,8 @@
-import { type RawData, WebSocket } from 'ws';
+import { WebSocket } from 'ws';
 import { Logger } from 'pino';
 
 import { initPacket, Ipv4Or6Packet } from '../../ip/ipv4Or6.js';
-import { padPacket } from '../../tunnel/obfuscation/packets.js';
+import { padMessage, unpadMessage } from '../../tunnel/obfuscation/messages.js';
 import { sendNoiseWhilstOpen } from '../../tunnel/obfuscation/connection.js';
 
 const DEFAULT_GATEWAY_URL = 'ws://localhost:8080';
@@ -48,7 +48,7 @@ export class GatewayClient {
     return this.ws.readyState === WebSocket.OPEN;
   }
 
-  public async readNextMessage(logger?: Logger): Promise<RawData> {
+  public async readNextMessage(): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       if (!this.isConnectionOpen()) {
         reject(new Error('Connection is not open'));
@@ -56,12 +56,17 @@ export class GatewayClient {
       }
 
       this.ws.once('message', (data, isBinary) => {
-        const isNoiseMessage = isBinary && (data as Buffer)[0] === 0;
-        logger?.debug({ isNoiseMessage, data: data.toString() }, 'Got message');
-        if (isNoiseMessage) {
+        if (!isBinary) {
+          return reject(new Error('Received text frame'));
+        }
+
+        const dataBuffer = data as Buffer;
+        if (dataBuffer.byteLength === 0 || dataBuffer[0] === 0) {
+          // Message is either empty or noise, so skip it
           this.readNextMessage().then(resolve, reject);
         } else {
-          resolve(data);
+          const messageUnpadded = unpadMessage(dataBuffer);
+          resolve(messageUnpadded);
         }
       });
     });
@@ -78,7 +83,7 @@ export class GatewayClient {
     }
 
     return new Promise((resolve, reject) => {
-      const packetPadded = padPacket(packet.buffer);
+      const packetPadded = padMessage(packet.buffer);
       this.ws.send(packetPadded, (cause) => {
         if (cause && this.isConnectionOpen()) {
           reject(new Error('Failed to send packet', { cause }));

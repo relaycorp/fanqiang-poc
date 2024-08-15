@@ -15,7 +15,12 @@ type TestHandler = (
 ) => Promise<void>;
 
 function pickAddress(subnet: string): Ipv4Or6Address {
-  const subnetCidr = new Cidr(subnet);
+  let subnetCidr;
+  try {
+    subnetCidr = new Cidr(subnet);
+  } catch (err) {
+    throw new Error(`Invalid subnet: ${subnet}`, { cause: err });
+  }
 
   // If it's an IPv6 subnet, skip the first address as that appears to be used for NDP.
   // If it's an IPv4 subnet, skip the network (0) and gateway (1) addresses.
@@ -37,7 +42,7 @@ export async function runTest(handler: TestHandler): Promise<void> {
 
   const gatewayClient = await GatewayClient.connect(logger);
 
-  const subnetMessage = await gatewayClient.readNextMessage(logger);
+  const subnetMessage = await gatewayClient.readNextMessage();
   const [ipv4Subnet, ipv6Subnet] = subnetMessage.toString().split(',');
   const subnet =
     destinationAddress instanceof Ipv4Address ? ipv4Subnet : ipv6Subnet;

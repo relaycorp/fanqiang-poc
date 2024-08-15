@@ -3,7 +3,7 @@ import { Logger } from 'pino';
 
 import { TunInterface } from '../tun/TunInterface.js';
 import { initPacket, type Ipv4Or6Packet } from '../ip/ipv4Or6.js';
-import { unpadPacket } from './obfuscation/packets.js';
+import { unpadMessage } from './obfuscation/messages.js';
 
 export class TunnelToInternetTransform extends Transform {
   constructor(
@@ -19,7 +19,7 @@ export class TunnelToInternetTransform extends Transform {
       return callback();
     }
 
-    const packetRaw = unpadPacket(chunk);
+    const packetRaw = unpadMessage(chunk);
     let packet: Ipv4Or6Packet;
     try {
       packet = initPacket(packetRaw);

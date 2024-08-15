@@ -19,7 +19,7 @@ object Obfuscation {
 
     private val NOISE_BUFFER = ByteArray(MAX_NOISE_SIZE)
 
-    private val PACKET_LENGTH_MASK = 0b10000000_00000000.toUShort()
+    private val MESSAGE_LENGTH_MASK = 0b10000000_00000000.toUShort()
 
     private fun getRandomDelayMs(): Long = Random.nextLong(MIN_DELAY_MS, MAX_DELAY_MS + 1)
 
@@ -40,17 +40,28 @@ object Obfuscation {
         return generateNoise()
     }
 
-    fun padPacket(packet: ByteBuffer): ByteBuffer {
+    fun isNoiseMessage(message: ByteArray): Boolean {
+        return message.isEmpty() || message[0] == 0.toByte()
+    }
+
+    fun padMessage(message: ByteBuffer): ByteBuffer {
         val paddingSize = generateNoiseSize()
-        val packetSize = packet.remaining()
-        val paddedPacket = ByteBuffer.allocate(2 + packetSize + paddingSize)
+        val messageSize = message.remaining()
+        val paddedMessage = ByteBuffer.allocate(2 + messageSize + paddingSize)
 
-        val packetLengthMasked = packetSize.toUShort() or PACKET_LENGTH_MASK
-        paddedPacket.putShort(packetLengthMasked.toShort())
+        val messageLengthMasked = messageSize.toUShort() or MESSAGE_LENGTH_MASK
+        paddedMessage.putShort(messageLengthMasked.toShort())
 
-        paddedPacket.put(packet)
-        paddedPacket.position(paddedPacket.capacity())
-        paddedPacket.flip()
-        return paddedPacket
+        paddedMessage.put(message)
+        paddedMessage.position(paddedMessage.capacity())
+        paddedMessage.flip()
+        return paddedMessage
+    }
+
+    fun unpadMessage(paddedMessage: ByteArray): ByteArray {
+        val messageLengthMasked = ByteBuffer.wrap(paddedMessage, 0, 2).short.toUShort()
+        val messageSize = messageLengthMasked and MESSAGE_LENGTH_MASK.inv()
+        // The production code shouldn't duplicate the message
+        return paddedMessage.sliceArray(2 until 2 + messageSize.toInt())
     }
 }
