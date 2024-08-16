@@ -57,8 +57,9 @@ or `npm run ping-cf-ipv6` to ping the IPv6 equivalent.
 
 ## Deploy to GCP
 
-The server is ready to be deployed to a VM instance on Google Cloud Platform (GCP),
+This server is ready to be deployed to a VM instance on Google Cloud Platform (GCP),
 using a Let's Encrypt certificate automatically provisioned by the web server (Caddy).
+The tunnel will be available at `wss://${DOMAIN_NAME}/tunnel`.
 
 ### Prerequisites
 
@@ -105,7 +106,7 @@ Once the firewall rules are configured, follow the steps below each time you wis
 To test the server, run:
 
 ```bash
-GATEWAY_URL=wss://DOMAIN_NAME npm run ping 1.1.1.1
+GATEWAY_URL=wss://${DOMAIN_NAME}/tunnel npm run ping 1.1.1.1
 ```
 
 ## Copyright notes

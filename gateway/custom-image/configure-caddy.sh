@@ -7,7 +7,15 @@ function configure_caddy() {
     DOMAIN_NAME="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/DOMAIN_NAME)"
     cat > /etc/caddy/Caddyfile <<EOF
 ${DOMAIN_NAME} {
-    reverse_proxy localhost:8080
+    handle /tunnel /tunnel/* {
+        reverse_proxy localhost:8080
+    }
+    handle / {
+        header {
+            Content-Type text/html
+        }
+        respond "<h1>Welcome to ${DOMAIN_NAME}</h1>" 200
+    }
 }
 EOF
     chown caddy:caddy /etc/caddy/Caddyfile
