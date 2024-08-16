@@ -121,7 +121,7 @@ The production implementation will also mimic a web browser by:
 ## VPN protocol
 
 In this PoC,
-the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`).
+the connection starts with the gateway sending a WebSockets frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`).
 To prevent fingerprinting,
 this message is padded,
 and it will often be delayed --
