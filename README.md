@@ -33,7 +33,8 @@ but this architecture is comparable to what VPN providers refer to as _double VP
 a feature that can improve privacy and mitigate traffic correlation attacks.
 
 The following diagram illustrates the relay of packets between [a client](./clients) (`192.168.0.1`) and an Internet host (`1.1.1.1`),
-via a tunnel (`https://tunnel.example`) and [a gateway](./gateway) (`192.0.2.1`, `https://gateway.example`):
+via a tunnel (`https://tunnel.example`) and [a gateway](./gateway) (`192.0.2.1`, `https://gateway.example`),
+using WebSockets:
 
 ```mermaid
 sequenceDiagram
@@ -62,12 +63,12 @@ the communication between the client and the tunnel, and between the tunnel and 
 
 ## How this is different from other HTTPS-based tunnels
 
-The idea of tunnelling VPN or proxy traffic through HTTPS to prevent active probing is not new.
-Typically,
-this is done over WebSockets;
-[this is what Tor's WebTunnel _bridge_](https://blog.torproject.org/introducing-webtunnel-evading-censorship-by-hiding-in-plain-sight/)
+The idea of mitigating active probing by tunnelling proxy or VPN traffic through HTTP over TLS (HTTPS) is not new.
+[Tor's _WebTunnel_ bridge](https://blog.torproject.org/introducing-webtunnel-evading-censorship-by-hiding-in-plain-sight/)
 and
-[potentially many other projects on GitHub](https://github.com/search?q=%28VPN+OR+tunnel%29+AND+WebSockets&type=repositories&s=&o=desc) do.
+[other GitHub projects](https://github.com/search?q=%28VPN+OR+tunnel%29+AND+WebSockets&type=repositories&s=&o=desc)
+typically use WebSockets,
+but the emerging [WebTransport API](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API) in HTTP v2+ is also a promising candidate.
 In recent years,
 the technique has been studied academically under the name
 [HTTPT](https://www.usenix.org/conference/foci20/presentation/frolov).
