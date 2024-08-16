@@ -123,8 +123,8 @@ The production implementation will also mimic a web browser by:
 In this PoC,
 the connection starts with the gateway sending a WebSockets frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`).
 To prevent fingerprinting,
-this message is padded,
-and it will often be delayed --
+in addition to being padded to a random size like any other frame,
+it will often be delayed too;
 during this delay, the client and gateway may send noise frame(s).
 
 From then on,
