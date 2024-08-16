@@ -21,6 +21,12 @@ those components in which I have extensive experience,
 such as authentication and encryption,
 are not implemented in the PoC.
 
+## Testing
+
+1. Deploy the [gateway](./gateway) to GCP.
+2. Configure an existing website to act as a tunnel. Use the example above for Nginx, or consult your web server's documentation.
+3. Test it with the [Android client](./clients/android).
+
 ## Architecture
 
 The main architectural difference between Fān Qiáng and other VPN protocols is that the _VPN server_ is split into two components:
@@ -161,12 +167,6 @@ which would make it too risky and costly to deploy to production in our case.
 If this project takes off,
 we'll probably contribute to WireGuard®,
 so we can replace our VPN protocol and focus on the tunnelling.
-
-## Testing
-
-1. Deploy the [gateway](./gateway) to GCP.
-2. Configure an existing website to act as a tunnel. Use the example above for Nginx, or consult your web server's documentation.
-3. Test it with the [Android client](./clients/android).
 
 ## Alternative tunnelling methods
 
