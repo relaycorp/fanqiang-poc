@@ -63,7 +63,7 @@ the communication between the client and the tunnel, and between the tunnel and 
 
 ## How this is different from other HTTPS-based tunnels
 
-The idea of mitigating active probing by tunnelling proxy or VPN traffic through HTTP over TLS (HTTPS) is not new.
+The idea of using HTTPS websites as fronts for proxy or VPN traffic is not new.
 [Tor's _WebTunnel_ bridge](https://blog.torproject.org/introducing-webtunnel-evading-censorship-by-hiding-in-plain-sight/)
 and
 [other GitHub projects](https://github.com/search?q=%28VPN+OR+tunnel%29+AND+WebSockets&type=repositories&s=&o=desc)
