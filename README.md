@@ -162,6 +162,12 @@ If this project takes off,
 we'll probably contribute to WireGuard®,
 so we can replace our VPN protocol and focus on the tunnelling.
 
+## Testing
+
+1. Deploy the [gateway](./gateway) to GCP.
+2. Configure an existing website to act as a tunnel. Use the example above for Nginx, or consult your web server's documentation.
+3. Test it with the [Android client](./clients/android).
+
 ## Alternative tunnelling methods
 
 Future versions of the protocol may support additional tunnelling methods.
