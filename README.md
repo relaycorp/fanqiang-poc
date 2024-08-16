@@ -104,17 +104,18 @@ some even require elevated privileges to use sensitive networking capabilities.
 ## Obfuscation
 
 We obfuscate the traffic to prevent censors from identifying it as a VPN tunnel,
-and eavesdroppers from gathering metadata about it. We achieve this by:
+and eavesdroppers from analysing traffic patterns.
+We achieve this by:
 
 - Having the client and the gateway exchange _noise_ frames of random sizes and at random intervals.
   However, the production implementation should produce consistent patterns for any given tunnel -- that is, censors shouldn't observe widely different patterns across connections to the same website.
-- Padding each packet to a random size. The production implementation might batch packets (instead of padding or in addition to it).
+- Padding each packet to a random size. The eventual production implementation might batch packets (instead of padding or in addition to it).
 
-The production implementation should also mimic a web browser by:
+The production implementation will also mimic a web browser by:
 
 - Simulating the retrieval of a web page prior to opening a WebSocket connection.
   The client would open an initial TLS connection with an ALPN of `h2`, get a response, and then make subsequent requests to emulate the retrieval of assets like images and JS files. This pattern should be stable by tunnel, but generally random across tunnels.
-- Mimicking the behaviour of a mainstream browser during a TLS handshake to ensure that its [JA4 TLS fingerprint](https://blog.foxio.io/ja4%2B-network-fingerprinting) will match that of a mainstream web browser. We'll have to use a library like [rquest](https://github.com/0x676e67/rquest).
+- Mimicking the behaviour of a mainstream browser during a TLS handshake to ensure that its [JA4 TLS fingerprint](https://blog.foxio.io/ja4%2B-network-fingerprinting) will match that of the browser. We'll have to use a library like [rquest](https://github.com/0x676e67/rquest).
 
 ## VPN protocol
 
