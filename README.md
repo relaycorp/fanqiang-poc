@@ -114,7 +114,7 @@ We achieve this by:
 The production implementation will also mimic a web browser by:
 
 - Simulating the retrieval of a web page prior to opening a WebSocket connection.
-  The client would open an initial TLS connection with an ALPN of `h2`, get a response, and then make subsequent requests to emulate the retrieval of assets like images and JS files. This pattern should be stable by tunnel, but generally random across tunnels.
+  The client would open an initial TLS connection with an ALPN of `h2`/`h3`, get a response, and then make subsequent requests to emulate the retrieval of assets like images and JS files. This pattern should be stable by tunnel, but generally random across tunnels.
 - Mimicking the behaviour of a mainstream browser during a TLS handshake to ensure that its [JA4 TLS fingerprint](https://blog.foxio.io/ja4%2B-network-fingerprinting) will match that of the browser. We'll have to use a library like [rquest](https://github.com/0x676e67/rquest).
 
 ## VPN protocol
