@@ -24,7 +24,7 @@ are not implemented in the PoC.
 ## Testing
 
 1. Deploy the [gateway](./gateway) to GCP.
-2. Configure an existing website to act as a tunnel. Use the example above for Nginx, or consult your web server's documentation.
+2. Configure an existing website to act as a tunnel. Use the example below for Nginx, or consult your web server's documentation.
 3. Test it with the [Android client](./clients/android).
 
 ## Architecture
