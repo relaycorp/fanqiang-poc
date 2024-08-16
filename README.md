@@ -1,7 +1,7 @@
 # Fān Qiáng ("翻墙") Proof of Concept
 
 This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
-a VPN tunnelling protocol that will mitigate:
+a VPN tunnelling protocol that mitigates:
 
 - **Active probing**, by using HTTPS websites to obfuscate traffic, as opposed to purpose-built Application Layer protocols that can be easily identified by the most sophisticated firewalls (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
 - **Enumeration**, mostly by offering a trivial and universal method to turn literally any website into a tunnel.
