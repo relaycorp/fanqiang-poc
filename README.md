@@ -101,14 +101,14 @@ existing solutions also require the tunnel operator to set up and operate a purp
 worse yet,
 some even require elevated privileges to use sensitive networking capabilities.
 
-## Obfuscation
+## Fingerprinting mitigation
 
-We obfuscate the traffic to prevent censors from identifying it as a VPN tunnel,
+We obfuscate the connection to prevent censors from identifying it as a VPN tunnel,
 and eavesdroppers from analysing traffic patterns.
 We achieve this by:
 
-- Having the client and the gateway exchange _noise_ frames of random sizes and at random intervals.
-  However, the production implementation should produce consistent patterns for any given tunnel -- that is, censors shouldn't observe widely different patterns across connections to the same website.
+- Having the client and the gateway exchange _noise_ frames of random sizes and at random intervals throughout the lifespan of the connection.
+  However, the production implementation will produce consistent patterns for any given tunnel -- that is, censors won't observe widely different patterns across connections to the same website.
 - Padding each packet to a random size. The eventual production implementation might batch packets (instead of padding or in addition to it).
 
 The production implementation will also mimic a web browser by:
@@ -120,8 +120,12 @@ The production implementation will also mimic a web browser by:
 ## VPN protocol
 
 In this PoC,
-the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`);
-to prevent fingerprinting, this message is padded and it will sometimes follow _noise_ frame(s) sent by the client or the gateway.
+the connection starts with the gateway sending a WebSockets text frame with the IPv4 and IPv6 subnets allocated to the client (e.g. `10.0.102.0/30,fd00:1234::2:0/127`).
+To prevent fingerprinting,
+this message is padded,
+and it will often be delayed --
+during this delay, the client and gateway may send noise frame(s).
+
 From then on,
 the client and the gateway exchange IP packets over the WebSockets connection.
 
