@@ -1,31 +1,38 @@
-# Fān Qiáng ("翻墙") Proof of Concept
+# Fān Qiáng Proof of Concept
 
-This is the Proof of Concept (PoC) of _Fān Qiáng_ ("翻墙"),
-a VPN tunnelling protocol that mitigates:
+This is the Proof of Concept (PoC) of _Fān Qiáng_ (翻墙),
+a VPN tunnelling protocol that will mitigate:
 
-- **Active probing**, by using HTTPS websites to obfuscate traffic, as opposed to purpose-built Application Layer protocols that can be easily identified by the most sophisticated firewalls (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
+- **Active probing**, by using existing HTTPS websites to obfuscate traffic, as opposed to purpose-built Application Layer protocols that can be identified by the most sophisticated firewalls (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
 - **Enumeration**, mostly by offering a trivial and universal method to turn literally any website into a tunnel.
-  This should result in such a high ratio of tunnels to users that it'd be impractical for censors to block them all, unlike [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and virtually all VPN services (except for self-hosted VPN servers).
-- **Fingerprinting**, by making the TLS handshake look like that of a mainstream web browser and the traffic devoid of any VPN-specific patterns.
+  This is necessary,
+  though not sufficient on its own,
+  to offer such a high ratio of tunnels to users that it'd be impractical for censors to block them all, unlike [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and virtually all VPN services (except for self-hosted VPN servers).
+- **Fingerprinting**, by making the TLS handshake look like that of a mainstream web browser and the traffic devoid of VPN-specific patterns.
 
-In other words,
-**this PoC can turn any HTTPS website into a tunnel**,
-thus making user traffic pass off as regular web browsing.
+## Testing
+
+We tested this PoC from several vantage points around the world,
+including the following Autonomous Systems (ASes),
+using a tunnel on Google Cloud Platform (GCP):
+
+- China: China Unicom (AS4837) and China Telecom (AS4134). It worked as expected.
+- Iran: Mobile Communication Company of Iran (AS197207). It didn't work: I suspect GCP or that particular GCP region is blocked, in which case it'd work with a different hosting provider.
+- Russia: Rostelecom (AS12389). It worked as expected.
+
+You, too, can test this PoC by following these steps:
+
+1. Deploy the [gateway](./gateway) to GCP.
+2. Turn an existing website into a tunnel. Use the example below for Nginx, or consult your web server's documentation.
+3. Test it with the [Android client](./clients/android).
 
 ## Scope
 
 The objective of the PoC is to assess the feasibility of the protocol,
 by focusing on the areas in which I personally lack experience (e.g. NATs, IPv6, TUN interfaces).
-Consequently,
-those components in which I have extensive experience,
+Those components in which I have extensive experience,
 such as authentication and encryption,
 are not implemented in the PoC.
-
-## Testing
-
-1. Deploy the [gateway](./gateway) to GCP.
-2. Configure an existing website to act as a tunnel. Use the example below for Nginx, or consult your web server's documentation.
-3. Test it with the [Android client](./clients/android).
 
 ## Architecture
 
@@ -34,13 +41,15 @@ The **tunnel**,
 responsible for obfuscating the traffic,
 and the **gateway**,
 responsible for routing the traffic to and from the Internet.
-We do this to circumvent censorship,
-but this architecture is comparable to what VPN providers refer to as _double VPN_ —
-a feature that can improve privacy and mitigate traffic correlation attacks.
 
-The following diagram illustrates the relay of packets between [a client](./clients) (`192.168.0.1`) and an Internet host (`1.1.1.1`),
-via a tunnel (`https://tunnel.example`) and [a gateway](./gateway) (`192.0.2.1`, `https://gateway.example`),
-using WebSockets:
+We split the server mainly to circumvent censorship,
+but this architecture is comparable to what VPN providers refer to as _multi-hop_ or _double VPN_,
+which is typically employed to improve privacy and mitigate traffic correlation.
+
+The client and the gateway communicate over WebSockets via the tunnel,
+which is a mere Application Layer reverse proxy.
+The following diagram illustrates the relay of packets between a client (`192.168.0.1`) and an Internet host (`1.1.1.1`),
+via a tunnel (`https://tunnel.example`) and a gateway (`192.0.2.1`, `https://gateway.example`):
 
 ```mermaid
 sequenceDiagram
