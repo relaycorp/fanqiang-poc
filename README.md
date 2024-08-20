@@ -7,7 +7,7 @@ a VPN tunnelling protocol that will mitigate:
 - **Enumeration**, by giving website operators a trivial and universal method to turn literally any website into a tunnel,
   along with incentives to do so.
   We'll also limit the set of tunnels that any given user can see.
-  This way, censors couldn't discover most/all tunnels like they can with [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and commercial VPN services.
+  This way, censors couldn't discover most/all tunnels like they can with [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and commercial VPNs.
 - **Fingerprinting**, by making the TLS handshake look like that of a mainstream web browser and the traffic devoid of VPN-specific patterns.
 
 In other words,
