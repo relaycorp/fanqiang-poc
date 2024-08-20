@@ -4,11 +4,15 @@ This is the Proof of Concept (PoC) of _Fān Qiáng_ (翻墙),
 a VPN tunnelling protocol that will mitigate:
 
 - **Active probing**, by using existing HTTPS websites to obfuscate traffic, as opposed to purpose-built Application Layer protocols that can be identified by the most sophisticated firewalls (e.g. [China's](https://en.wikipedia.org/wiki/Great_Firewall#Active_probing)).
-- **Enumeration**, mostly by offering a trivial and universal method to turn literally any website into a tunnel.
-  This is necessary,
-  though not sufficient on its own,
-  to offer such a high ratio of tunnels to users that it'd be impractical for censors to block them all, unlike [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and virtually all VPN services (except for self-hosted VPN servers).
+- **Enumeration**, by giving website operators a trivial and universal method to turn literally any website into a tunnel,
+  along with incentives to do so.
+  We'll also limit the set of tunnels that any given user can see.
+  This way, censors wouldn't be able to discover all or most tunnels like they can with [Tor bridges](https://github.com/scriptzteam/Tor-Bridges-Collector) and commercial VPN services.
 - **Fingerprinting**, by making the TLS handshake look like that of a mainstream web browser and the traffic devoid of VPN-specific patterns.
+
+In other words,
+whilst censors could still find ways to uncover individual tunnels,
+any subsequent blocking or monitoring would impact a small fraction of the user base.
 
 ## Testing
 
