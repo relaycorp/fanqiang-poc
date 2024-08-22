@@ -21,7 +21,7 @@ including the following Autonomous Systems (ASes),
 using a tunnel on Google Cloud Platform (GCP):
 
 - China: China Unicom (AS4837) and China Telecom (AS4134). It worked as expected.
-- Iran: Mobile Communication Company of Iran (AS197207). It didn't work: I suspect GCP or that particular GCP region is blocked, in which case it'd work with a different hosting provider.
+- Iran: Mobile Communication Company of Iran (AS197207). It didn't work because Google blocks connections from Iran; we may try running the tests with a tunnel hosted elsewhere.
 - Russia: Rostelecom (AS12389). It worked as expected.
 
 You, too, can test this PoC by following these steps:
