@@ -21,7 +21,7 @@ including the following Autonomous Systems (ASes),
 using a tunnel on Google Cloud Platform (GCP):
 
 - China: China Unicom (AS4837) and China Telecom (AS4134). It worked as expected.
-- Iran: Mobile Communication Company of Iran (AS197207). It didn't work because Google blocks connections from Iran; we may try running the tests with a tunnel hosted elsewhere.
+- Iran: Mobile Communication Company of Iran (AS197207). It didn't work because Google blocks connections from Iran. We might try rerunning the tests with a tunnel hosted elsewhere.
 - Russia: Rostelecom (AS12389). It worked as expected.
 
 You, too, can test this PoC by following these steps:
@@ -48,7 +48,7 @@ responsible for routing the traffic to and from the Internet.
 
 We split the server mainly to circumvent censorship,
 but this architecture is comparable to what VPN providers refer to as _multi-hop_ or _double VPN_,
-which is typically employed to improve privacy and mitigate traffic correlation.
+which is typically employed to improve privacy.
 
 The client and the gateway communicate over WebSockets via the tunnel,
 which is a mere Application Layer reverse proxy.
