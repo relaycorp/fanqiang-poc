@@ -87,7 +87,11 @@ The idea of using HTTPS websites as fronts for proxy or VPN traffic is not new.
 and
 [other GitHub projects](https://github.com/search?q=%28VPN+OR+tunnel%29+AND+WebSockets&type=repositories&s=&o=desc)
 typically use WebSockets,
-but the emerging [WebTransport API](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API) in HTTP v2+ is also a promising candidate.
+but the emerging
+[WebTransport API](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API)
+and
+[MASQUE](https://blog.cloudflare.com/unlocking-quic-proxying-potential/)
+are also promising candidates.
 In recent years,
 the technique has been studied academically under the name
 [HTTPT](https://www.usenix.org/conference/foci20/presentation/frolov).
@@ -120,6 +124,9 @@ By contrast,
 existing solutions also require the tunnel operator to set up and operate a purpose-built WebSocket server;
 worse yet,
 some even require elevated privileges to use sensitive networking capabilities.
+
+We're starting with WebSockets because it's universally supported and easy to set up,
+but an eventual production implementation might also add MASQUE support once mainstream web servers add HTTP/3 support to their reverse proxies.
 
 ## Fingerprinting mitigation
 
